@@ -1,319 +1,685 @@
-# Whisprr Backend
+# Whisprr Backend API
 
-A comprehensive real-time messaging application backend built with Node.js, Express, MongoDB, and Socket.IO.
+A comprehensive backend server for an anonymous counseling platform built with Node.js, Express.js, MongoDB, Socket.io, and WebRTC.
 
-## Features
+## 🚀 Features
 
-### Core Features
-- **Real-time messaging** with WebSocket support
-- **User authentication** and authorization
-- **Private and group conversations**
-- **File uploads** (images, videos, audio, documents)
-- **Message reactions** and replies
-- **Read receipts** and typing indicators
-- **User online/offline status**
-- **Message search** and filtering
-- **Push notifications**
-- **User profiles** and contact management
+- **Dual Authentication System**: JWT-based and Firebase Anonymous Authentication
+- **Real-time Messaging**: Encrypted group and private messaging with Socket.io
+- **Voice/Video Calls**: WebRTC integration for counselor sessions
+- **Counselor Verification**: Document upload and admin approval system
+- **Safety & Moderation**: Crisis keyword detection, content reporting, panic button
+- **Resource Library**: Counselors and admins can upload educational resources
+- **Admin Dashboard**: Comprehensive user management and analytics
+- **Security**: Rate limiting, input sanitization, CSRF protection, and more
 
-### Advanced Features
-- **Message editing and deletion**
-- **Message forwarding**
-- **Message pinning**
-- **Conversation archiving and muting**
-- **User blocking and privacy settings**
-- **Comprehensive notification system**
-- **Rate limiting and security**
-- **Image compression and thumbnail generation**
-- **Comprehensive logging and error handling**
+## 📋 Table of Contents
 
-## Tech Stack
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [API Endpoints](#api-endpoints)
+- [Socket.io Events](#socketio-events)
+- [Database Models](#database-models)
+- [Security Features](#security-features)
+- [Deployment](#deployment)
 
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: MongoDB with Mongoose
-- **Real-time**: Socket.IO
-- **Authentication**: JWT
-- **File Upload**: Multer
-- **Image Processing**: Sharp
-- **Security**: Helmet, CORS, Rate Limiting
-- **Logging**: Custom logging system
+## 🛠 Installation
 
-## Project Structure
-
-```
-server/
-├── api/
-│   ├── app.js              # Express app configuration
-│   └── server.js           # Server entry point
-├── controllers/
-│   ├── auth.controller.js       # Authentication logic
-│   ├── user.controller.js       # User management
-│   ├── conversation.controller.js   # Conversation management
-│   ├── message.controller.js    # Message handling
-│   ├── upload.controller.js     # File upload handling
-│   ├── search.controller.js     # Search functionality
-│   └── notification.controller.js  # Notification system
-├── middleware/
-│   ├── auth.js             # Authentication middleware
-│   └── error-handler.js    # Error handling middleware
-├── models/
-│   ├── user.model.js       # User schema
-│   ├── conversation.model.js   # Conversation schema
-│   ├── message.model.js    # Message schema
-│   └── group.model.js      # Group schema (legacy)
-├── routes/
-│   ├── auth.route.js       # Authentication routes
-│   ├── user.route.js       # User routes
-│   ├── conversation.route.js   # Conversation routes
-│   ├── message.route.js    # Message routes
-│   ├── upload.route.js     # File upload routes
-│   ├── search.route.js     # Search routes
-│   └── notification.route.js  # Notification routes
-├── sockets/
-│   └── index.js            # Socket.IO configuration
-├── utils/
-│   └── logger.js           # Logging utility
-├── config/
-│   └── db.js               # Database configuration
-├── uploads/                # File upload directory
-│   ├── images/
-│   ├── videos/
-│   ├── audio/
-│   ├── files/
-│   ├── avatars/
-│   └── thumbnails/
-├── logs/                   # Application logs
-├── .env.example           # Environment variables template
-├── package.json
-└── README.md
-```
-
-## Installation & Setup
-
-### Prerequisites
-- Node.js >= 16.0.0
-- MongoDB >= 4.4
-- npm >= 8.0.0
-
-### 1. Clone the Repository
+1. **Clone the repository**
 ```bash
 git clone <repository-url>
 cd whisprr/server
 ```
 
-### 2. Install Dependencies
+2. **Install dependencies**
 ```bash
 npm install
 ```
 
-### 3. Environment Configuration
-Copy the example environment file and configure it:
+3. **Set up environment variables**
 ```bash
 cp .env.example .env
+# Edit .env with your configuration
 ```
 
-Edit `.env` with your configuration:
-```env
-PORT=5000
-NODE_ENV=development
-CLIENT_URL=http://localhost:3000
-MONGODB_URI=mongodb://localhost:27017/whisprr
-JWT_SECRET=your-super-secret-jwt-key-here
-JWT_EXPIRES_IN=7d
-```
-
-### 4. Start MongoDB
-Make sure MongoDB is running on your system.
-
-### 5. Start the Server
+4. **Create upload directories**
 ```bash
-# Development mode with hot reload
-npm run dev
-
-# Production mode
-npm start
+mkdir -p uploads/{messages,resources,verification}
 ```
 
-The server will start on `http://localhost:5000` (or your configured PORT).
+5. **Start the development server**
+```bash
+npm run dev
+```
 
-## API Documentation
+## 🔧 Environment Variables
 
-### Authentication Endpoints
-- `POST /api/v1/auth/register` - User registration
-- `POST /api/v1/auth/login` - User login
-- `POST /api/v1/auth/logout` - User logout
-- `POST /api/v1/auth/refresh` - Refresh JWT token
-- `POST /api/v1/auth/forgot-password` - Request password reset
-- `POST /api/v1/auth/reset-password` - Reset password
+Create a `.env` file in the server root with the following variables:
 
-### User Endpoints
-- `GET /api/v1/users/profile/:userId` - Get user profile
-- `PUT /api/v1/users/profile` - Update user profile
-- `GET /api/v1/users/search` - Search users
-- `GET /api/v1/users/contacts` - Get user contacts
-- `POST /api/v1/users/contacts` - Add contact
-- `DELETE /api/v1/users/contacts/:contactId` - Remove contact
-- `POST /api/v1/users/block` - Block user
-- `DELETE /api/v1/users/block/:userId` - Unblock user
+```env
+# Server Configuration
+NODE_ENV=development
+PORT=5000
 
-### Conversation Endpoints
-- `POST /api/v1/conversations/create` - Create conversation
-- `GET /api/v1/conversations` - Get user conversations
-- `GET /api/v1/conversations/:conversationId` - Get conversation details
-- `PUT /api/v1/conversations/:conversationId` - Update conversation
-- `DELETE /api/v1/conversations/:conversationId` - Delete conversation
-- `POST /api/v1/conversations/:conversationId/participants` - Add participant
-- `DELETE /api/v1/conversations/:conversationId/participants/:userId` - Remove participant
+# MongoDB Configuration
+MONGODB_URI=mongodb://localhost:27017/whisprr
+MONGODB_URI_TEST=mongodb://localhost:27017/whisprr_test
 
-### Message Endpoints
-- `POST /api/v1/messages/send` - Send message
-- `GET /api/v1/messages/conversation/:conversationId` - Get conversation messages
-- `PUT /api/v1/messages/:messageId` - Edit message
-- `DELETE /api/v1/messages/:messageId` - Delete message
-- `PUT /api/v1/messages/:messageId/read` - Mark message as read
-- `POST /api/v1/messages/:messageId/react` - React to message
-- `POST /api/v1/messages/:messageId/forward` - Forward message
+# JWT Configuration
+JWT_SECRET=your_super_secret_jwt_key_here_change_in_production
+JWT_REFRESH_SECRET=your_refresh_token_secret_here
+JWT_EXPIRE=7d
+JWT_REFRESH_EXPIRE=30d
 
-### Upload Endpoints
-- `POST /api/v1/upload/single` - Upload single file
-- `POST /api/v1/upload/multiple` - Upload multiple files
-- `GET /api/v1/upload/media/:filename` - Get uploaded media
-- `DELETE /api/v1/upload/media/:filename` - Delete uploaded media
+# Firebase Configuration
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_PRIVATE_KEY=your_firebase_private_key
+FIREBASE_CLIENT_EMAIL=your_firebase_client_email
 
-### Search Endpoints
-- `GET /api/v1/search/global` - Global search
-- `GET /api/v1/search/messages` - Search messages
-- `GET /api/v1/search/users` - Search users
-- `GET /api/v1/search/conversations` - Search conversations
+# Encryption Keys
+ENCRYPTION_KEY=your_32_character_encryption_key_here
+ENCRYPTION_IV=your_16_char_iv
 
-### Notification Endpoints
-- `GET /api/v1/notifications` - Get notifications
-- `GET /api/v1/notifications/unread-count` - Get unread notification count
-- `PUT /api/v1/notifications/:notificationId/read` - Mark notification as read
-- `PUT /api/v1/notifications/read-all` - Mark all notifications as read
-- `DELETE /api/v1/notifications/:notificationId` - Delete notification
+# Frontend URLs
+CLIENT_URL=http://localhost:3000
+ADMIN_URL=http://localhost:3001
 
-## WebSocket Events
+# Crisis Detection Keywords
+CRISIS_KEYWORDS=suicide,kill myself,end it all,harm myself,self-harm
+
+# Email Configuration (optional)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+```
+
+## 📊 API Endpoints
+
+### Authentication Routes (`/api/auth`)
+
+#### Register User
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "username": "string (3-30 chars, alphanumeric + underscore)",
+  "password": "string (min 8 chars)",
+  "email": "string (optional)",
+  "role": "user|counselor" (default: user)
+}
+```
+
+**Response:**
+```json
+{
+  "message": "User registered successfully",
+  "user": {
+    "id": "user_id",
+    "username": "username",
+    "email": "email",
+    "role": "user",
+    "isAnonymous": false
+  },
+  "tokens": {
+    "accessToken": "jwt_token",
+    "refreshToken": "refresh_token"
+  }
+}
+```
+
+#### Login
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+#### Firebase Authentication
+```http
+POST /api/auth/firebase
+Headers:
+  Firebase-Token: firebase_id_token
+```
+
+#### Get Profile
+```http
+GET /api/auth/profile
+Headers:
+  Authorization: Bearer jwt_token
+```
+
+#### Update Profile
+```http
+PUT /api/auth/profile
+Headers:
+  Authorization: Bearer jwt_token
+Content-Type: application/json
+
+{
+  "profile": {
+    "displayName": "string",
+    "bio": "string",
+    "pronouns": "string"
+  },
+  "preferences": {
+    "theme": "light|dark|auto",
+    "language": "en"
+  }
+}
+```
+
+### Messages Routes (`/api/messages`)
+
+#### Send Message
+```http
+POST /api/messages
+Headers:
+  Authorization: Bearer jwt_token
+Content-Type: application/json
+
+{
+  "recipient": "user_id (for private messages)",
+  "group": "group_id (for group messages)",
+  "content": {
+    "text": "message content"
+  },
+  "messageType": "text|image|file|audio|video",
+  "replyTo": "message_id (optional)"
+}
+```
+
+#### Get Messages
+```http
+GET /api/messages/:conversationId?page=1&limit=50
+Headers:
+  Authorization: Bearer jwt_token
+```
+
+#### Get Conversations
+```http
+GET /api/messages/conversations?type=private|group
+Headers:
+  Authorization: Bearer jwt_token
+```
+
+### Groups Routes (`/api/groups`)
+
+#### Create Group
+```http
+POST /api/groups
+Headers:
+  Authorization: Bearer jwt_token
+Content-Type: application/json
+
+{
+  "name": "string (3-100 chars)",
+  "description": "string (10-500 chars)",
+  "category": "anxiety|depression|relationships|trauma|addiction|grief|self-esteem|stress|other",
+  "type": "public|private|support-circle",
+  "maxMembers": 100,
+  "requiresApproval": false
+}
+```
+
+#### Get Groups
+```http
+GET /api/groups?page=1&limit=20&category=anxiety&search=keyword
+```
+
+#### Join Group
+```http
+POST /api/groups/:groupId/join
+Headers:
+  Authorization: Bearer jwt_token
+```
+
+### Counselor Routes (`/api/counselors`)
+
+#### Apply for Verification
+```http
+POST /api/counselors/apply-verification
+Headers:
+  Authorization: Bearer jwt_token
+Content-Type: multipart/form-data
+
+{
+  "specializations": ["anxiety", "depression"],
+  "certifications": [
+    {
+      "name": "Licensed Clinical Social Worker",
+      "issuer": "State Board",
+      "dateObtained": "2020-01-01"
+    }
+  ],
+  "documents": [file uploads]
+}
+```
+
+#### Get Counselors
+```http
+GET /api/counselors?verified=true&available=true&specialization=anxiety&sortBy=rating
+```
+
+### Calls Routes (`/api/calls`)
+
+#### Initiate Call
+```http
+POST /api/calls/initiate
+Headers:
+  Authorization: Bearer jwt_token
+Content-Type: application/json
+
+{
+  "recipientId": "user_id (for private call)",
+  "groupId": "group_id (for group call)",
+  "callType": "voice|video"
+}
+```
+
+#### Join Call
+```http
+POST /api/calls/:callId/join
+Headers:
+  Authorization: Bearer jwt_token
+```
+
+### Admin Routes (`/api/admin`)
+
+#### Get Dashboard Statistics
+```http
+GET /api/admin/dashboard
+Headers:
+  Authorization: Bearer jwt_token (admin role required)
+```
+
+#### Get Users
+```http
+GET /api/admin/users?role=counselor&status=active&search=username
+Headers:
+  Authorization: Bearer jwt_token (admin role required)
+```
+
+### Moderation Routes (`/api/moderation`)
+
+#### Report Content
+```http
+POST /api/moderation/report
+Headers:
+  Authorization: Bearer jwt_token
+Content-Type: application/json
+
+{
+  "contentId": "message_id or user_id",
+  "contentType": "message|user|group",
+  "reason": "harassment|hate_speech|inappropriate_content|spam|self_harm|threatening_behavior|other",
+  "description": "string (10-500 chars)"
+}
+```
+
+#### Panic Button
+```http
+POST /api/moderation/panic
+Headers:
+  Authorization: Bearer jwt_token
+Content-Type: application/json
+
+{
+  "location": "optional location info",
+  "severity": "critical"
+}
+```
+
+#### Get Crisis Resources
+```http
+GET /api/moderation/crisis-resources
+```
+
+### Resources Routes (`/api/resources`)
+
+#### Create Resource
+```http
+POST /api/resources
+Headers:
+  Authorization: Bearer jwt_token (counselor or admin role required)
+Content-Type: multipart/form-data
+
+{
+  "title": "string (5-200 chars)",
+  "description": "string (10-1000 chars)",
+  "type": "article|video|audio|pdf|exercise|worksheet|guide|tool",
+  "category": "mental-health|coping-strategies|self-help|crisis-support|relationships|mindfulness|therapy-techniques|educational",
+  "tags": "tag1,tag2,tag3",
+  "difficulty": "beginner|intermediate|advanced",
+  "estimatedTime": 30,
+  "file": [file upload]
+}
+```
+
+#### Get Resources
+```http
+GET /api/resources?category=mental-health&type=article&difficulty=beginner&search=keyword&page=1&limit=20
+```
+
+## 🔌 Socket.io Events
 
 ### Client to Server Events
-- `join-conversation` - Join a conversation room
-- `leave-conversation` - Leave a conversation room
-- `send-message` - Send a message
-- `typing-start` - Start typing indicator
-- `typing-stop` - Stop typing indicator
-- `mark-read` - Mark messages as read
-- `call-user` - Initiate a call
-- `accept-call` - Accept incoming call
-- `reject-call` - Reject incoming call
 
-### Server to Client Events
-- `new-message` - New message received
-- `user-typing` - User typing status
-- `message-read` - Message read receipt
-- `user-online` - User came online
-- `user-offline` - User went offline
-- `notification` - New notification
-- `incoming-call` - Incoming call
-- `call-accepted` - Call accepted
-- `call-rejected` - Call rejected
-
-## Database Models
-
-### User Model
-- User authentication and profile information
-- Contacts and blocked users
-- Notification settings and preferences
-- Online status and activity tracking
-
-### Conversation Model
-- Private and group conversation support
-- Participant management with roles
-- Conversation settings and preferences
-- Archive and mute functionality
-
-### Message Model
-- Text, media, and system messages
-- Reply and forward functionality
-- Reactions and read receipts
-- Message editing and deletion
-
-## Security Features
-
-- **JWT Authentication** with secure token handling
-- **Password Hashing** using bcrypt
-- **Rate Limiting** to prevent abuse
-- **Input Validation** and sanitization
-- **XSS Protection** with helmet and xss-clean
-- **CORS** configuration for cross-origin requests
-- **File Upload Security** with type and size validation
-
-## Logging
-
-The application includes comprehensive logging:
-- **Error Logging** - All errors with stack traces
-- **Request Logging** - HTTP requests with response times
-- **Security Logging** - Authentication and authorization events
-- **Performance Logging** - Slow operations and bottlenecks
-- **Socket Logging** - WebSocket connection events
-
-Logs are stored in the `logs/` directory with daily rotation.
-
-## Development
-
-### Scripts
-```bash
-npm run dev      # Start development server with hot reload
-npm run start    # Start production server
-npm run lint     # Check code formatting
-npm run format   # Format code with Prettier
+#### Connection
+```javascript
+// Client connects with JWT token
+socket.auth = { token: 'jwt_token' };
+socket.connect();
 ```
 
-### Environment Variables
-See `.env.example` for all available configuration options.
+#### Send Message
+```javascript
+socket.emit('message:send', {
+  recipient: 'user_id', // or group: 'group_id'
+  content: { text: 'Hello' },
+  messageType: 'text'
+});
+```
 
-### Adding New Features
-1. Create appropriate model in `models/`
-2. Create controller in `controllers/`
-3. Create routes in `routes/`
-4. Add route to `api/app.js`
-5. Update Socket.IO events in `sockets/index.js` if needed
+#### Join Room
+```javascript
+socket.emit('room:join', {
+  roomId: 'conversation_id_or_group_id',
+  roomType: 'conversation|group|call'
+});
+```
 
-## Deployment
+#### Typing Indicator
+```javascript
+socket.emit('message:typing', {
+  conversationId: 'conversation_id',
+  isTyping: true
+});
+```
 
-### Production Environment
+### Server to Client Events
+
+#### New Message
+```javascript
+socket.on('message:new', (data) => {
+  console.log('New message:', data.message);
+  console.log('Crisis detected:', data.crisisDetected);
+});
+```
+
+#### User Status
+```javascript
+socket.on('user:online', (data) => {
+  console.log('User came online:', data.userId);
+});
+
+socket.on('user:offline', (data) => {
+  console.log('User went offline:', data.userId);
+});
+```
+
+#### Call Events
+```javascript
+socket.on('call:signal', (data) => {
+  // Handle WebRTC signaling
+});
+
+socket.on('call:user-joined', (data) => {
+  console.log('User joined call:', data.userId);
+});
+```
+
+## 🗃️ Database Models
+
+### User Model
+```javascript
+{
+  username: String, // Required, unique
+  email: String, // Optional
+  password: String, // Required if not Firebase user
+  firebaseUid: String, // For Firebase users
+  role: 'user|counselor|admin',
+  authMethod: 'password|firebase',
+  isAnonymous: Boolean,
+  
+  counselorInfo: {
+    isVerified: Boolean,
+    verificationStatus: 'pending|approved|rejected|not_submitted',
+    specializations: [String],
+    certifications: [{
+      name: String,
+      issuer: String,
+      dateObtained: Date
+    }],
+    rating: Number,
+    totalSessions: Number
+  },
+  
+  profile: {
+    displayName: String,
+    bio: String,
+    avatar: String,
+    pronouns: String
+  },
+  
+  privacy: {
+    blockList: [ObjectId],
+    allowDirectMessages: Boolean
+  },
+  
+  statistics: {
+    totalMessages: Number,
+    totalGroupsJoined: Number,
+    totalSessionsAttended: Number
+  },
+  
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Message Model
+```javascript
+{
+  sender: ObjectId, // Required
+  recipient: ObjectId, // For private messages
+  group: ObjectId, // For group messages
+  conversationId: String, // Required
+  messageType: 'text|image|file|audio|video|system',
+  
+  content: {
+    text: String,
+    encryptedText: String, // AES encrypted
+    mediaUrl: String,
+    fileName: String,
+    fileSize: Number
+  },
+  
+  status: {
+    sent: Boolean,
+    delivered: Boolean,
+    read: Boolean,
+    sentAt: Date,
+    deliveredAt: Date,
+    readAt: Date
+  },
+  
+  reactions: [{
+    user: ObjectId,
+    emoji: String,
+    timestamp: Date
+  }],
+  
+  crisis: {
+    detected: Boolean,
+    keywords: [String],
+    severity: 'low|medium|high|critical'
+  },
+  
+  expiresAt: Date, // Auto-delete after 30 days
+  
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Group Model
+```javascript
+{
+  name: String, // Required
+  description: String, // Required
+  category: String, // Required
+  type: 'public|private|support-circle',
+  creator: ObjectId,
+  moderators: [ObjectId],
+  
+  members: [{
+    user: ObjectId,
+    role: 'member|moderator|admin',
+    joinedAt: Date,
+    isMuted: Boolean
+  }],
+  
+  settings: {
+    maxMembers: Number,
+    requiresApproval: Boolean,
+    allowedUserTypes: {
+      users: Boolean,
+      counselors: Boolean
+    }
+  },
+  
+  statistics: {
+    totalMessages: Number,
+    totalMembers: Number,
+    lastActivity: Date
+  },
+  
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+## 🔒 Security Features
+
+### Rate Limiting
+- **General API**: 100 requests per 15 minutes
+- **Authentication**: 5 attempts per 15 minutes
+- **Messages**: 30 messages per minute
+- **File Uploads**: 10 uploads per hour
+- **Calls**: 20 call initiations per hour
+
+### Input Sanitization
+- XSS protection with `xss` library
+- NoSQL injection prevention with `express-mongo-sanitize`
+- Parameter pollution prevention with `hpp`
+- Suspicious pattern detection
+
+### Encryption
+- Message content encrypted with AES
+- JWT tokens for authentication
+- Secure HTTP headers with Helmet.js
+
+### Content Moderation
+- Crisis keyword detection
+- Automated content flagging
+- Manual moderation tools for counselors/admins
+- User reporting system
+
+## 🚀 Deployment
+
+### Environment Setup
 1. Set `NODE_ENV=production`
-2. Configure production MongoDB URI
-3. Set secure JWT secret
-4. Configure SMTP for email notifications
-5. Set up reverse proxy (nginx)
-6. Configure SSL/TLS certificates
-7. Set up process manager (PM2)
+2. Use strong JWT secrets
+3. Configure MongoDB connection
+4. Set up Firebase (if using)
+5. Configure CORS for your frontend domains
 
-### Docker Deployment
+### Production Considerations
+- Use PM2 or similar process manager
+- Set up MongoDB replica set
+- Configure Redis for session storage (optional)
+- Enable HTTPS
+- Set up monitoring and logging
+- Configure file storage (AWS S3, etc.)
+
+### Docker Setup
 ```dockerfile
-# Example Dockerfile
-FROM node:16-alpine
+FROM node:18-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --only=production
 COPY . .
 EXPOSE 5000
 CMD ["npm", "start"]
 ```
 
-## Contributing
+### Health Check Endpoint
+```http
+GET /health
+
+Response:
+{
+  "status": "healthy",
+  "timestamp": "2023-12-01T00:00:00.000Z",
+  "uptime": 12345,
+  "environment": "production"
+}
+```
+
+## 📝 API Response Format
+
+### Success Response
+```json
+{
+  "message": "Operation successful",
+  "data": { /* response data */ }
+}
+```
+
+### Error Response
+```json
+{
+  "error": "Error message",
+  "details": ["validation error 1", "validation error 2"],
+  "requestId": "unique_request_id"
+}
+```
+
+### Pagination Response
+```json
+{
+  "data": [/* array of items */],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 100,
+    "pages": 5
+  }
+}
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests and linting
+4. Add tests if applicable
 5. Submit a pull request
 
-## License
+## 📜 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the ISC License.
 
-## Support
+## 🆘 Support
 
-For support and questions, please open an issue on GitHub or contact the development team.
+For support, please contact the development team or create an issue in the repository.
+
+---
+
+**Whisprr Backend API** - Secure, scalable, and feature-rich backend for anonymous counseling platform.
