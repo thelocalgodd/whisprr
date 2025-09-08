@@ -37,6 +37,7 @@ const corsOptions = {
     "Content-Type",
     "Authorization",
     "X-Requested-With",
+    "Access-Control-Allow-Origin",
     "Firebase-Token",
     "X-CSRF-Token",
   ],
