@@ -1,0 +1,64 @@
+{
+  "name": "whisprr-server",
+  "version": "1.0.0",
+  "description": "Real-time messaging application backend with WebSocket support",
+  "main": "./api/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node ./api/server.js",
+    "dev": "nodemon ./api/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "prettier --check .",
+    "format": "prettier --write .",
+    "seed": "node ./scripts/seed.js",
+    "backup": "node ./scripts/backup.js",
+    "migrate": "node ./scripts/migrate.js"
+  },
+  "keywords": [
+    "messaging",
+    "chat",
+    "websocket",
+    "real-time",
+    "node.js",
+    "express",
+    "mongodb"
+  ],
+  "author": "Vincent Kwaku Kpemlie",
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^4.21.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.4",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "sharp": "^0.32.6",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0",
+    "validator": "^13.15.15",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/whisprr.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/whisprr/issues"
+  },
+  "homepage": "https://github.com/yourusername/whisprr#readme"
+}
