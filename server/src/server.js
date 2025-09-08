@@ -31,12 +31,7 @@ const server = createServer(app);
 
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.CLIENT_URL || "http://localhost:3000",
-      process.env.ADMIN_URL || "http://localhost:3001",
-      "http://localhost:3000",
-      "http://localhost:3001",
-    ];
+    const allowedOrigins = ["*"];
 
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);

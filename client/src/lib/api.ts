@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5003/api/';
+const API_BASE_URL = "https://whisprr-api.onrender.com"
 
 // API response types
 export interface ApiResponse<T = any> {

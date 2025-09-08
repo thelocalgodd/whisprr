@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { authApi } from "@/lib/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,27 +26,44 @@ interface User {
   isVerified: boolean;
 }
 
-export default function ProfilePage() {
-  const defaultUser: User = {
-    username: "Anonymous",
-    fullName: "Anonymous User",
-    bio: "",
-    role: "user",
-    createdAt: new Date().toISOString(),
-    isActive: true,
-    isVerified: false,
-  };
-  
+// Fetch user details from API on mount
+const defaultUser: User = {
+  username: "Anonymous",
+  fullName: "Anonymous User",
+  bio: "",
+  role: "user",
+  createdAt: new Date().toISOString(),
+  isActive: true,
+  isVerified: false,
+};
+
+export default function Profile() {
   const [user, setUser] = useState<User>(defaultUser);
   const [username, setUsername] = useState(defaultUser.username);
   const [fullName, setFullName] = useState(defaultUser.fullName || "");
   const [bio, setBio] = useState(defaultUser.bio || "");
+
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const res = await authApi.getProfile();
+        if (res && res.success && res.data) {
+          setUser(res.data);
+          setUsername(res.data.username);
+          setFullName(res.data.fullName || "");
+          setBio(res.data.bio || "");
+        }
+      } catch (err) {
+        // Optionally handle error
+      }
+    }
+    fetchProfile();
+  }, []);
   const [updateMessage, setUpdateMessage] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
 
   const handleUpdateProfile = () => {
     setUser({ ...user, username, fullName, bio });
@@ -63,7 +81,6 @@ export default function ProfilePage() {
     setNewPassword("");
     setConfirmPassword("");
   };
-
 
   return (
     <Card className="w-full mt-2 shadow-none">
@@ -93,8 +110,12 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-semibold">{user.fullName || user.username}</h3>
-                <p className="text-sm text-muted-foreground">@{user.username}</p>
+                <h3 className="text-lg font-semibold">
+                  {user.fullName || user.username}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  @{user.username}
+                </p>
               </div>
             </div>
             <div className="grid gap-2">
