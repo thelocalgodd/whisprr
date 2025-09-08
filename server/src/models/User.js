@@ -142,6 +142,10 @@ const userSchema = new mongoose.Schema({
     }]
   },
   notifications: {
+    inApp: {
+      type: Boolean,
+      default: true
+    },
     email: {
       type: Boolean,
       default: true
@@ -151,6 +155,20 @@ const userSchema = new mongoose.Schema({
       default: true
     },
     sms: {
+      type: Boolean,
+      default: false
+    }
+  },
+  notificationPreferences: {
+    inApp: {
+      type: Boolean,
+      default: true
+    },
+    email: {
+      type: Boolean,
+      default: true
+    },
+    push: {
       type: Boolean,
       default: false
     }

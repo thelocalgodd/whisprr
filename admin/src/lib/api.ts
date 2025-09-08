@@ -1,6 +1,6 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // Create axios instance
 const api = axios.create({
@@ -37,7 +37,7 @@ const handleApiResponse = async <T>(apiCall: () => Promise<AxiosResponse<T>>) =>
 // Dashboard Analytics API
 export const dashboardApi = {
   getAnalytics: () => 
-    handleApiResponse(() => api.get('/admin/dashboard/analytics')),
+    handleApiResponse(() => api.get('/admin/dashboard')),
 };
 
 // User Management API

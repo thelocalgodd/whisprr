@@ -1,13 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Login as LoginService, Register as RegisterService, Logout as LogoutService, type User as BackendUser } from "@/services/auth";
-import { 
-  signInAnonymouslyFirebase, 
-  signOutFirebase, 
-  onFirebaseAuthStateChanged, 
+import {
+  Login as LoginService,
+  Register as RegisterService,
+  Logout as LogoutService,
+  type User as BackendUser,
+} from "@/services/auth";
+import {
+  signInAnonymouslyFirebase,
+  signOutFirebase,
+  onFirebaseAuthStateChanged,
   getCurrentFirebaseUser,
-  type FirebaseAuthUser 
+  type FirebaseAuthUser,
 } from "@/services/firebase-auth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -27,7 +33,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<BackendUser | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseAuthUser | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseAuthUser | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -54,12 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(response.user);
         localStorage.setItem("user", JSON.stringify(response.user));
         localStorage.setItem("token", response.token);
-        
+
         // Sign out of Firebase anonymous auth if logged in
         if (firebaseUser?.isAnonymous) {
           await signOutFirebase();
         }
-        
+
         toast.success("Login successful");
         router.push("/dashboard");
       } else {
@@ -78,12 +86,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.success) {
         setUser(response.user);
         localStorage.setItem("user", JSON.stringify(response.user));
-        
+
         // Sign out of Firebase anonymous auth if logged in
         if (firebaseUser?.isAnonymous) {
           await signOutFirebase();
         }
-        
+
         toast.success("Registration successful");
         router.push("/dashboard");
       } else {
@@ -118,13 +126,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("user");
         localStorage.removeItem("token");
       }
-      
+
       // Sign out from Firebase
       if (firebaseUser) {
         await signOutFirebase();
         setFirebaseUser(null);
       }
-      
+
       toast.success("Logged out successfully");
       router.push("/");
     } catch (error: any) {
@@ -154,3 +162,5 @@ export function useAuth() {
   }
   return context;
 }
+
+export default AuthContext;

@@ -22,6 +22,7 @@ const callRoutes = require("./routes/calls");
 const adminRoutes = require("./routes/admin");
 const moderationRoutes = require("./routes/moderation");
 const resourceRoutes = require("./routes/resources");
+const notificationRoutes = require("./routes/notifications");
 
 const { middleware, rateLimiters } = require("./middleware/security");
 
@@ -121,6 +122,7 @@ app.use("/api/calls", callRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/moderation", moderationRoutes);
 app.use("/api/resources", resourceRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

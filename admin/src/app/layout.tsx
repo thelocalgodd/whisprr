@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { DynamicBreadcrumb } from "../components/dynamic-breadcrumb";
 import { AdminSidebar } from "../components/admin-sidebar";
+import { NotificationsPopover } from "../components/notifications-popover";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,8 +33,9 @@ export default function RootLayout({
         <div className="flex min-h-screen">
           <AdminSidebar />
           <main className="flex-1 p-6">
-            <div className="mb-4">
+            <div className="mb-4 flex items-center justify-between">
               <DynamicBreadcrumb />
+              <NotificationsPopover />
             </div>
             {children}
           </main>

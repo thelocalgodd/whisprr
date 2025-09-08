@@ -11,7 +11,8 @@
     "setup": "node scripts/setup.js",
     "lint": "eslint src/ --ext .js",
     "lint:fix": "eslint src/ --ext .js --fix",
-    "seed": "node scripts/seed.js",
+    "seed": "node scripts/seedDatabase.js",
+    "seed:clear": "node scripts/seedDatabase.js --clear",
     "migrate": "node scripts/migrate.js"
   },
   "keywords": [
