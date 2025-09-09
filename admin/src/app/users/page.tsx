@@ -57,7 +57,12 @@ export default function UsersPage() {
 
   const handleUpdateUserStatus = async (userId: string, isActive: boolean) => {
     try {
-      const response = await userApi.updateUserStatus(userId, { isActive });
+      let response;
+      if (isActive) {
+        response = await userApi.unbanUser(userId);
+      } else {
+        response = await userApi.banUser(userId);
+      }
       if (response.success) {
         setUsers(
           users.map((user) =>
@@ -129,8 +134,6 @@ export default function UsersPage() {
                 <TableHead>Username</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Verified</TableHead>
-                <TableHead>Last Seen</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -155,16 +158,6 @@ export default function UsersPage() {
                     <Badge variant={user.isActive ? "default" : "secondary"}>
                       {user.isActive ? "active" : "inactive"}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {user.isVerified ? (
-                      <Badge variant="default">Verified</Badge>
-                    ) : (
-                      <Badge variant="outline">Unverified</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(user.lastSeen).toString()}
                   </TableCell>
                   <TableCell className="space-x-2">
                     <Button variant="outline" size="sm" asChild>

@@ -1,37 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { BadgeCheck, Search, Send, Users } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { AlertCircle, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { groupApi, messageApi, type Group, type Message } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getGroups,
+  getGroupMessages,
+  sendGroupMessage,
+} from "@/services/group";
+import { GroupList } from "@/components/groups/GroupList";
+import { GroupChat } from "@/components/groups/GroupChat";
+import { Group, Message, User } from "@/lib/api";
 
-
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
 
 export default function GroupsPage() {
   const { user: authUser } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
 
   useEffect(() => {
     const fetchGroups = async () => {
       try {
         setLoading(true);
-        const response = await groupApi.getGroups();
-        if (response.success && response.data) {
-          setGroups(response.data.groups);
-        }
-      } catch (error) {
+        setError(null);
+        const result = await getGroups({ limit: 20 });
+        setGroups(result.groups);
+        setPagination(result.pagination);
+      } catch (error: any) {
         console.error("Failed to fetch groups:", error);
-        setError("Failed to load groups");
+        setError(error?.message || "Failed to load groups");
       } finally {
         setLoading(false);
       }
@@ -44,12 +55,15 @@ export default function GroupsPage() {
     const fetchMessages = async () => {
       if (selectedGroup) {
         try {
-          const response = await messageApi.getMessages(selectedGroup._id);
-          if (response.success && response.data) {
-            setMessages(response.data.messages);
-          }
+          setIsLoadingMessages(true);
+          setError(null);
+          const result = await getGroupMessages(selectedGroup._id);
+          setMessages(result.messages);
         } catch (error) {
           console.error("Failed to fetch messages:", error);
+          setError("Failed to load messages. Please try again.");
+        } finally {
+          setIsLoadingMessages(false);
         }
       }
     };
@@ -57,183 +71,129 @@ export default function GroupsPage() {
     fetchMessages();
   }, [selectedGroup]);
 
-  const handleSendMessage = async () => {
-    if (selectedGroup && newMessage.trim()) {
-      try {
-        const response = await messageApi.sendMessage({
-          conversationId: selectedGroup._id,
-          content: newMessage.trim(),
-          messageType: 'text'
-        });
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      if (selectedGroup && content.trim() && !isSendingMessage) {
+        try {
+          setIsSendingMessage(true);
 
-        if (response.success && response.data) {
-          // Refresh messages
-          const messagesResponse = await messageApi.getMessages(selectedGroup._id);
-          if (messagesResponse.success && messagesResponse.data) {
-            setMessages(messagesResponse.data.messages);
+          // Check posting permissions based on postingPermissions
+          const { postingPermissions } = selectedGroup.settings;
+          let canPost = false;
+          if (postingPermissions === "all") {
+            canPost = true;
+          } else if (
+            postingPermissions === "counselors-only" &&
+            authUser?.role === "counselor"
+          ) {
+            canPost = true;
+          } else if (
+            postingPermissions === "moderators-only" &&
+            selectedGroup.moderators.some((mod) => mod._id === authUser?._id)
+          ) {
+            canPost = true;
           }
-        }
-        setNewMessage("");
-      } catch (error) {
-        console.error('Failed to send message:', error);
-      }
-    }
-  };
 
-  const filteredGroups = groups.filter((group) =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase())
+          if (!canPost) {
+            setError("You don't have permission to post in this group");
+            return;
+          }
+
+          const sentMessage = await sendGroupMessage(
+            selectedGroup._id,
+            content.trim()
+          );
+
+          if (sentMessage) {
+            // Optimistically update messages instead of refetching
+            setMessages((prev) => [...prev, sentMessage]);
+            setError(null);
+          } else {
+            setError("Failed to send message");
+          }
+        } catch (error: any) {
+          console.error("Failed to send message:", error);
+          setError(error?.message || "Failed to send message");
+        } finally {
+          setIsSendingMessage(false);
+        }
+      }
+    },
+    [selectedGroup, authUser, isSendingMessage]
   );
 
-  if (error) return <div>{error}</div>;
+  const handleGroupSelect = useCallback((group: Group) => {
+    setSelectedGroup(group);
+    setError(null);
+  }, []);
+
+  const handleRetryMessages = useCallback(async () => {
+    if (selectedGroup) {
+      try {
+        setError(null);
+        const result = await getGroupMessages(selectedGroup._id);
+        setMessages(result.messages);
+      } catch (error: any) {
+        console.error("Failed to fetch messages:", error);
+        setError("Failed to load messages. Please try again.");
+      }
+    }
+  }, [selectedGroup]);
+
+  if (error && !selectedGroup) {
+    return (
+      <Card className="w-full shadow-none h-[calc(100vh-4rem)]">
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+            <div>
+              <h3 className="text-lg font-semibold text-red-600">
+                Error Loading Groups
+              </h3>
+              <p className="text-muted-foreground mt-2">{error}</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => {
+                  setError(null);
+                  window.location.reload();
+                }}
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full shadow-none h-[calc(100vh-4rem)]">
       <div className="flex h-full">
-        <div className="w-1/4 border-r">
-          <div className="p-4 border-b">
-            <h2 className="text-xl font-bold">Groups</h2>
-            <div className="relative mt-2">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search groups"
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto w-full">
-            {filteredGroups.length > 0 ? (
-              filteredGroups.map((group) => (
-                <Card
-                  key={group._id}
-                  className={`flex flex-col shadow-none py-4 border-none rounded-none border-b cursor-pointer w-full ${
-                    selectedGroup?._id === group._id
-                      ? "bg-accent"
-                      : "hover:bg-accent"
-                  }`}
-                  onClick={() => setSelectedGroup(group)}
-                >
-                  <div className="flex items-center">
-                    <div className="ml-4">
-                      <p className="font-semibold">{group.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {group.description}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              ))
-            ) : (
-              <div className="p-4 text-center text-muted-foreground">
-                No groups available.
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 flex flex-col">
-          {selectedGroup ? (
-            <>
-              <div className="px-4 py-2 border-b flex items-center">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage
-                    src={selectedGroup.avatar}
-                    alt={selectedGroup.name}
-                  />
-                  <AvatarFallback>{selectedGroup.name[0]}</AvatarFallback>
-                </Avatar>
-                <div className="ml-4 flex-1">
-                  <p className="font-semibold">{selectedGroup.name}</p>
-                   <p className="text-sm text-muted-foreground">
-                     {selectedGroup.statistics.totalMembers} members
-                   </p>
-                </div>
-              </div>
-              <div className="flex-1 p-4 overflow-y-auto">
-                {messages.map((msg) => (
-                  <div
-                    key={msg._id}
-                    className={`flex mb-4 ${
-                      msg.sender.username === "Me"
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`px-2 py-1 rounded-lg max-w-xs ${
-                        msg.sender.username === "Me"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      }`}
-                    >
-                       <p className="text-sm mb-1 w-full">{msg.content.text}</p>
-                      <p
-                        className={`text-xs ${
-                          msg.sender.username === "Me"
-                            ? "text-primary-foreground/70"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        <span className="font-semibold text-xs mb-1 flex items-center gap-2">
-                          {msg.sender.username}
-                          {msg.sender.role === "counselor" && (
-                            <BadgeCheck
-                              className={`w-4 h-4 ${
-                                msg.sender.isVerified
-                                  ? "text-blue-500"
-                                  : "text-gray-400"
-                              }`}
-                            />
-                          )}
-                          <span
-                            className={`text-xs font-normal ${
-                              msg.sender.username === "Me"
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                             {new Date(msg.status.sentAt).toLocaleTimeString([], {
-                               hour: "2-digit",
-                               minute: "2-digit",
-                               hour12: true,
-                             })}
-                          </span>
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 border-t">
-                <div className="relative">
-                  <Input
-                    placeholder="Type a message..."
-                    className="pr-12"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                  />
-                  <Button
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-16 bg-primary text-primary-foreground"
-                    onClick={handleSendMessage}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No groups available or select a group to start chatting.</p>
-              </div>
-            </div>
-          )}
-        </div>
+        <GroupList
+          groups={groups}
+          selectedGroup={selectedGroup}
+          onGroupSelect={handleGroupSelect}
+          loading={loading}
+        />
+        <GroupChat
+          group={selectedGroup}
+          messages={messages}
+          authUser={authUser}
+          onSendMessage={handleSendMessage}
+          isSending={isSendingMessage}
+          error={error}
+          onRetry={handleRetryMessages}
+          isLoadingMessages={isLoadingMessages}
+        />
       </div>
+      {pagination && (
+        <div className="p-4 text-sm text-muted-foreground">
+          Showing page {pagination.page} of {pagination.pages} (Total:{" "}
+          {pagination.total} groups)
+        </div>
+      )}
     </Card>
   );
 }
