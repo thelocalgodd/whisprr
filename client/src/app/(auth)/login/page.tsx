@@ -22,7 +22,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserCircle } from "lucide-react";
 import { useState } from "react";
 
 const formSchema = z.object({
@@ -55,17 +54,6 @@ function Login() {
       console.error(error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleAnonymousLogin = async () => {
-    setIsAnonymousLoading(true);
-    try {
-      await loginAnonymously();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsAnonymousLoading(false);
     }
   };
 

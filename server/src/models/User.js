@@ -19,10 +19,8 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: function () {
-        return !this.firebaseUid;
-      },
-      minlength: 8,
+      required: true,
+      minlength: 6,
     },
     firebaseUid: {
       type: String,
@@ -353,17 +351,6 @@ userSchema.methods.resetLoginAttempts = function () {
     $unset: { "security.lockUntil": 1 },
   });
 };
-
-// userSchema.methods.toJSON = function () {
-//   const obj = this.toObject();
-//   delete obj.password;
-// delete obj.security.twoFactorSecret;
-// delete obj.security.passwordResetToken;
-// delete obj.security.emailVerificationToken;
-//   delete obj.security.sessions;
-//   delete obj.__v;
-//   return obj;
-// };
 
 const User = mongoose.model("User", userSchema);
 
