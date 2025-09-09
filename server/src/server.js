@@ -8,7 +8,6 @@ const { createServer } = require("http");
 const { Server } = require("socket.io");
 
 const connectDB = require("./config/database");
-const { initializeFirebase } = require("./config/firebase");
 const {
   handleConnection,
   setupSocketHandlers,
@@ -232,10 +231,6 @@ process.on("unhandledRejection", (reason, promise) => {
 const startServer = async () => {
   try {
     await connectDB();
-
-    if (process.env.FIREBASE_PROJECT_ID) {
-      initializeFirebase();
-    }
 
     const PORT = process.env.PORT || 5000;
 

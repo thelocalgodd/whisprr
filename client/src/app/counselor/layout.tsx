@@ -12,14 +12,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Logout } from "@/services/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function CounselorAppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
+  const { logout } = useAuth();
 
   const isActive = (path: string) => {
     // Ensure matching against counselor routes
@@ -58,11 +58,9 @@ export function CounselorAppSidebar() {
 
   const handleSignOut = async () => {
     try {
-      await Logout();
-      router.push("/login");
+      await logout();
     } catch (error) {
       console.error("Failed to sign out:", error);
-      // Here you could add a user-facing error message
     }
   };
 

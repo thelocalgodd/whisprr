@@ -4,7 +4,6 @@ const router = express.Router();
 const {
   register,
   login,
-  firebaseAuth,
   refreshToken,
   logout,
   logoutAll,
@@ -19,7 +18,6 @@ const {
 
 const {
   authenticate,
-  authenticateFirebase,
   checkAccountLock,
 } = require("../middleware/auth");
 
@@ -29,7 +27,6 @@ router.post("/register", register);
 
 router.post("/login", login);
 
-router.post("/firebase", firebaseAuth);
 
 router.post("/refresh-token", refreshToken);
 

@@ -4,48 +4,41 @@ import React, { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, BadgeCheck, Users, Shield } from "lucide-react";
+import { Send, Users, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams } from "next/navigation";
-import {
-  subscribeToMessages,
-  sendMessage,
-  type FirebaseMessage,
-} from "@/services/firebase-messaging";
-import {
-  getGroup,
-  getGroupMessages,
-  sendGroupMessage,
-  type Group as ServiceGroup,
-} from "@/services/group";
+import { groupApi, messageApi, type Group, type Message } from "@/lib/api";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
+interface GroupMessage {
+  id: string;
+  text: string;
+  senderId: string;
+  senderName: string;
+  timestamp: Date;
+  isCurrentUser: boolean;
+}
+
 export default function GroupChatPage() {
-  const { user, firebaseUser } = useAuth();
+  const { user } = useAuth();
   const params = useParams();
   const groupId = params.groupId as string;
 
-  const [messages, setMessages] = useState<FirebaseMessage[]>([]);
+  const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
-  const [groupInfo, setGroupInfo] = useState<ServiceGroup | null>(null);
+  const [groupInfo, setGroupInfo] = useState<Group | null>(null);
   const [memberCount, setMemberCount] = useState(0);
   const [canPost, setCanPost] = useState(false);
-  const [rules, setRules] = useState<
-    { rule: string; order: number; _id: string }[]
-  >([]);
-  const [groupTags, setGroupTags] = useState<string[]>([]);
-  const [creatorInfo, setCreatorInfo] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
-  const unsubscribeGroupRef = useRef<(() => void) | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!groupId) {
+    if (!groupId || !user) {
       setIsLoading(false);
       return;
     }
@@ -53,26 +46,19 @@ export default function GroupChatPage() {
     // Fetch group information
     const fetchGroupInfo = async () => {
       try {
-        const group = await getGroup(groupId);
-        if (group) {
+        const response = await groupApi.getGroup(groupId);
+        if (response.success && response.data) {
+          const group = response.data;
           setGroupInfo(group);
-          setRules(group.rules || []);
-          setGroupTags(group.tags || []);
-          setCreatorInfo(group.creator);
 
           // Determine posting permissions
-          const postingPermissions = group.settings?.postingPermissions;
-          const currentUserRole = user?.role || firebaseUser?.role || "user";
+          const currentUserRole = user?.role || "user";
           const isModerator = group.moderators?.some(
-            (mod: any) => mod._id === user?._id || mod._id === firebaseUser?.uid
+            (mod) => mod._id === user?._id
           );
 
-          setCanPost(
-            postingPermissions === "all" ||
-              (postingPermissions === "counselors-only" &&
-                currentUserRole === "counselor") ||
-              (postingPermissions === "moderators-only" && isModerator)
-          );
+          // Check if user can post (simplified logic)
+          setCanPost(true); // For now, allow all users to post
 
           // Set member count from statistics
           setMemberCount(group.statistics?.totalMembers || 0);
@@ -81,43 +67,59 @@ export default function GroupChatPage() {
         console.error("Failed to fetch group info:", error);
         setLoadingError(error?.message || "Failed to load group information");
         toast.error("Failed to load group information");
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchGroupInfo();
+    loadMessages();
 
-    // Subscribe to messages
-    const unsubscribe = subscribeToMessages(groupId, (msgs) => {
-      setMessages(msgs);
-      setIsLoading(false);
+    // Set up polling for new messages
+    const pollMessages = async () => {
+      await loadMessages();
+    };
 
-      // Update active member count based on recent activity if needed
-      const uniqueSenders = new Set(
-        msgs.map((m: FirebaseMessage) => m.senderId)
-      );
-      const activeMembers = uniqueSenders.size;
-      if (groupInfo?.statistics?.activeMembers !== activeMembers) {
-        setMemberCount(groupInfo?.statistics?.totalMembers || activeMembers);
-      }
-    });
-    unsubscribeRef.current = unsubscribe;
+    pollingIntervalRef.current = setInterval(pollMessages, 2000);
 
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [groupId, user, firebaseUser]);
+  }, [groupId, user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const loadMessages = async () => {
+    if (!groupId || !user) return;
+
+    try {
+      const response = await groupApi.getGroupMessages(groupId);
+      
+      if (response.success && response.data) {
+        const formattedMessages: GroupMessage[] = response.data.messages.map((msg: Message) => ({
+          id: msg._id,
+          text: msg.content.text,
+          senderId: msg.sender._id,
+          senderName: msg.sender.username || msg.sender.fullName || "User",
+          timestamp: new Date(msg.createdAt),
+          isCurrentUser: msg.sender._id === user._id
+        }));
+        
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error("Error loading messages:", error);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !groupId || isSending || !canPost) return;
 
-    const currentUser = firebaseUser || user;
-    if (!currentUser) {
+    if (!user) {
       toast.error("Please sign in to send messages");
       return;
     }
@@ -127,41 +129,18 @@ export default function GroupChatPage() {
     setInput("");
 
     try {
-      const senderName =
-        user?.profile?.displayName ||
-        firebaseUser?.displayName ||
-        (firebaseUser?.isAnonymous
-          ? `Anonymous-${firebaseUser.uid.slice(0, 6)}`
-          : "User");
-
-      // Check if message violates rules (basic check)
-      const messageLower = messageText.toLowerCase();
-      const violation = rules.some(
-        (rule) =>
-          (rule.rule.toLowerCase().includes("spam") &&
-            messageLower.includes("http")) ||
-          (rule.rule.toLowerCase().includes("respect") &&
-            messageLower.includes("hate")) ||
-          (rule.rule.toLowerCase().includes("confidentiality") &&
-            messageLower.includes("share"))
-      );
-
-      if (violation) {
-        toast.warning(
-          "Your message may violate group rules. Please review before sending."
-        );
-        setInput(messageText); // Restore input
-        setIsSending(false);
-        return;
-      }
-
-      await sendMessage(groupId, messageText, senderName, {
-        senderId: currentUser._id || currentUser.uid,
-        senderRole: currentUser.role || "user",
-        isVerified: currentUser.counselorInfo?.isVerified || false,
+      const response = await groupApi.sendGroupMessage(groupId, {
+        content: {
+          text: messageText,
+          type: 'text'
+        },
+        messageType: 'text'
       });
 
-      toast.success("Message sent successfully");
+      if (response.success) {
+        // Reload messages to get the new message
+        await loadMessages();
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
@@ -172,18 +151,26 @@ export default function GroupChatPage() {
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !isSending && canPost) {
+    if (e.key === "Enter" && !isSending) {
       handleSend();
     }
   };
 
-  if (!firebaseUser && !user) {
+  if (!user) {
     return (
-      <Card className="w-full h-full flex flex-col shadow-none border-none">
+      <Card className="w-full h-[calc(100vh-3rem)] flex flex-col shadow-none border-none">
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">
-            Please sign in to use group chat
-          </p>
+          <p className="text-muted-foreground">Please sign in to use the chat</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="w-full h-[calc(100vh-3rem)] flex flex-col shadow-none border-none">
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">Loading group...</p>
         </div>
       </Card>
     );
@@ -191,275 +178,124 @@ export default function GroupChatPage() {
 
   if (loadingError) {
     return (
-      <Card className="w-full h-full flex flex-col shadow-none border-none">
+      <Card className="w-full h-[calc(100vh-3rem)] flex flex-col shadow-none border-none">
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="text-red-500">
-              <svg
-                className="h-12 w-12 mx-auto mb-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-red-600">
-                Failed to Load Group
-              </h3>
-              <p className="text-muted-foreground mt-2">{loadingError}</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  setLoadingError(null);
-                  window.location.reload();
-                }}
-              >
-                Try Again
-              </Button>
-            </div>
-          </div>
+          <p className="text-destructive">{loadingError}</p>
         </div>
       </Card>
     );
   }
-
-  if (isLoading || !groupInfo) {
-    return (
-      <Card className="w-full h-full flex flex-col shadow-none border-none">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-2">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="text-sm text-muted-foreground">
-              Loading group chat...
-            </p>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
-  const currentUserId = firebaseUser?.uid || user?._id || user?.username || "";
 
   return (
-    <Card className="w-full h-full flex flex-col shadow-none border-none">
-      {/* Group Header */}
-      <div className="px-4 py-2 border-b flex items-center">
-        <Avatar className="h-10 w-10">
-          <AvatarImage
-            src={creatorInfo?.profile?.avatar}
-            alt={groupInfo?.name}
-          />
-          <AvatarFallback>
-            <Users className="h-5 w-5" />
-          </AvatarFallback>
-        </Avatar>
-        <div className="ml-4 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="font-semibold">{groupInfo.name}</p>
-            <Badge variant="outline" className="text-xs">
-              {groupInfo.type?.replace("-", " ")}
-            </Badge>
-            {groupInfo.isActive && !groupInfo.isArchived ? (
-              <Badge variant="default" className="text-xs">
-                Active
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="text-xs">
-                Archived
-              </Badge>
-            )}
+    <Card className="w-full h-[calc(100vh-3rem)] flex flex-col shadow-none border-none">
+      <div className="border-b">
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={groupInfo?.avatar} />
+              <AvatarFallback>
+                {groupInfo?.name?.charAt(0).toUpperCase() || "G"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <h2 className="font-semibold text-lg">{groupInfo?.name}</h2>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="h-3 w-3" />
+                <span>{memberCount} members</span>
+                {groupInfo?.type && (
+                  <>
+                    <span>•</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {groupInfo.type}
+                    </Badge>
+                  </>
+                )}
+                {!canPost && (
+                  <>
+                    <span>•</span>
+                    <span className="text-destructive">View Only</span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {groupInfo.statistics?.totalMembers || memberCount} members •{" "}
-            {groupInfo.statistics?.activeMembers || 0} active
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Created by{" "}
-            {creatorInfo?.profile?.displayName ||
-              creatorInfo?.username ||
-              "Unknown"}
-          </p>
-          {!canPost && (
-            <p className="text-xs text-orange-600">
-              You don't have permission to post in this group
+          {groupInfo?.description && (
+            <p className="text-sm text-muted-foreground mt-2">
+              {groupInfo.description}
             </p>
           )}
         </div>
       </div>
 
-      {/* Group Rules Section */}
-      {rules.length > 0 && (
-        <div className="p-4 border-b bg-muted/50">
-          <div className="flex items-center gap-2 mb-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">Group Rules</h3>
-          </div>
-          <div className="space-y-1">
-            {rules.slice(0, 3).map((rule) => (
-              <p key={rule._id} className="text-xs text-muted-foreground">
-                • {rule.rule}
-              </p>
-            ))}
-            {rules.length > 3 && (
-              <p className="text-xs text-muted-foreground">
-                • ... and {rules.length - 3} more rules
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Group Tags */}
-      {groupTags.length > 0 && (
-        <div className="px-4 py-2 border-b">
-          <div className="flex flex-wrap gap-1">
-            {groupTags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Messages Area */}
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 p-4 overflow-y-auto bg-stone-50 dark:bg-stone-900">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <Users className="h-12 w-12 mb-4 opacity-50" />
-            <p className="text-center">
-              No messages yet. Start the conversation!
-            </p>
-            {!canPost && (
-              <p className="text-xs mt-2">
-                You can only read messages in this group.
-              </p>
-            )}
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            No messages yet. Start the conversation!
           </div>
         ) : (
-          messages.map((msg) => {
-            const isCurrentUser = msg.senderId === currentUserId;
-            const isVerified = msg.isVerified || false;
-            const senderRole = msg.senderRole || "user";
-
-            return (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex mb-4 ${msg.isCurrentUser ? "justify-end" : "justify-start"}`}
+            >
               <div
-                key={msg.id}
-                className={`flex mb-4 ${isCurrentUser ? "justify-end" : "justify-start"}`}
+                className={`p-3 rounded-lg max-w-xs ${
+                  msg.isCurrentUser
+                    ? "bg-blue-500 text-white"
+                    : "bg-stone-200 dark:bg-stone-800"
+                }`}
               >
-                <div
-                  className={`flex flex-col ${
-                    isCurrentUser ? "items-end" : "items-start"
-                  } max-w-xs`}
+                {!msg.isCurrentUser && (
+                  <p className="text-xs font-semibold mb-1">
+                    {msg.senderName}
+                  </p>
+                )}
+                <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                <p
+                  className={`text-xs mt-1 ${
+                    msg.isCurrentUser
+                      ? "text-white/70"
+                      : "text-muted-foreground"
+                  }`}
                 >
-                  <div
-                    className={`px-3 py-2 rounded-lg ${
-                      isCurrentUser
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2 mb-1">
-                      {!isCurrentUser && (
-                        <Avatar className="h-6 w-6 flex-shrink-0">
-                          <AvatarImage
-                            src={msg.senderAvatar}
-                            alt={msg.senderName}
-                          />
-                          <AvatarFallback className="text-xs">
-                            {msg.senderName[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1 mb-1">
-                          <span className="font-semibold text-sm truncate">
-                            {msg.senderName}
-                          </span>
-                          {isVerified && (
-                            <BadgeCheck className="h-3 w-3 text-blue-500" />
-                          )}
-                          {senderRole === "counselor" && !isVerified && (
-                            <BadgeCheck className="h-3 w-3 text-gray-400" />
-                          )}
-                          {senderRole && (
-                            <Badge variant="outline" className="text-xs">
-                              {senderRole}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm break-words">{msg.text}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span
-                        className={`${
-                          isCurrentUser
-                            ? "text-primary-foreground/70"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {msg.timestamp
-                          ? new Date(msg.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })
-                          : "Just now"}
-                      </span>
-                      {msg.isAnonymous && (
-                        <span className="text-xs opacity-70">(Anonymous)</span>
-                      )}
-                      {msg.isFlagged && (
-                        <span className="text-yellow-500 text-xs">
-                          ⚠ Flagged
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  {msg.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </p>
               </div>
-            );
-          })
+            </div>
+          ))
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
       <div className="p-4 border-t">
-        <div className="relative">
-          <Input
-            placeholder={
-              canPost ? "Type a message..." : "You cannot post in this group"
-            }
-            className="pr-12"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleInputKeyDown}
-            disabled={isSending || !canPost}
-            className={!canPost ? "bg-muted cursor-not-allowed" : ""}
-          />
-          <Button
-            size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-16 bg-primary text-primary-foreground"
-            onClick={handleSend}
-            disabled={isSending || !input.trim() || !canPost}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-        {groupInfo.settings?.requiresApproval && (
-          <p className="text-xs text-muted-foreground mt-1">
-            New members require approval to post
-          </p>
+        {canPost ? (
+          <div className="relative">
+            <Input
+              placeholder="Type a message..."
+              className="pr-12"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleInputKeyDown}
+              disabled={isSending}
+            />
+            <Button
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-16 bg-primary text-primary-foreground"
+              onClick={handleSend}
+              disabled={isSending || !input.trim()}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center text-sm text-muted-foreground">
+            <Shield className="h-4 w-4 inline mr-1" />
+            You don&apos;t have permission to post in this group
+          </div>
         )}
       </div>
     </Card>

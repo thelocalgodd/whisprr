@@ -648,6 +648,11 @@ export const counselorApi = {
     return handleResponse(response);
   },
 
+  getStats: async (): Promise<ApiResponse<{ stats: any }>> => {
+    const response = await api.get('/counselors/stats');
+    return handleResponse(response);
+  },
+
   // Admin endpoints
   approveCounselor: async (counselorId: string, notes?: string): Promise<ApiResponse> => {
     const response = await api.post(`/counselors/${counselorId}/approve`, { notes });

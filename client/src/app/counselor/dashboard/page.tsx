@@ -16,10 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  authApi,
   conversationApi,
-  groupApi,
-  resourceApi,
   counselorApi,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -90,9 +87,9 @@ function DashboardPage() {
   const { user: authUser } = useAuth();
   const [user, setUser] = useState({ name: "Anonymous" });
   const [stats, setStats] = useState({
-    conversations: 0,
-    forumPosts: 0,
-    resources: 0,
+    activeSessions: 0,
+    totalClients: 0,
+    resourcesUploaded: 0,
   });
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,32 +110,21 @@ function DashboardPage() {
           });
         }
 
-        // Fetch conversations count
+        // Fetch counselor-specific stats
+        if (authUser?.role === 'counselor') {
+          const statsResponse = await counselorApi.getStats();
+          if (statsResponse.success && statsResponse.data) {
+            const { stats: counselorStats } = statsResponse.data;
+            setStats({
+              activeSessions: counselorStats.activeSessions || 0,
+              totalClients: counselorStats.totalClients || 0,
+              resourcesUploaded: counselorStats.resourcesUploaded || 0,
+            });
+          }
+        }
+
+        // Fetch conversations for recent activity
         const conversationsResponse = await conversationApi.getConversations();
-        const conversationsCount =
-          conversationsResponse.success && conversationsResponse.data
-            ? conversationsResponse.data.length
-            : 0;
-
-        // Fetch groups count (as forum posts)
-        const groupsResponse = await groupApi.getGroups();
-        const groupsCount =
-          groupsResponse.success && groupsResponse.data
-            ? groupsResponse.data.groups.length
-            : 0;
-
-        // Fetch resources count
-        const resourcesResponse = await resourceApi.getResources();
-        const resourcesCount =
-          resourcesResponse.success && resourcesResponse.data
-            ? resourcesResponse.data.resources.length
-            : 0;
-
-        setStats({
-          conversations: conversationsCount,
-          forumPosts: groupsCount,
-          resources: resourcesCount,
-        });
 
         // Create recent activities from conversations
         if (
@@ -148,7 +134,7 @@ function DashboardPage() {
         ) {
           const activities: Activity[] = conversationsResponse.data
             .slice(0, 3)
-            .map((conv: any) => ({
+            .map((conv) => ({
               type: conv.isGroup ? "forum" : "conversation",
               title: conv.isGroup
                 ? conv.name || "Group Chat"
@@ -183,21 +169,21 @@ function DashboardPage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
           <StatCard
-            title="Active Conversations"
-            value={stats.conversations}
-            description="Ongoing private and group chats"
+            title="Active Sessions"
+            value={stats.activeSessions}
+            description="Current counseling sessions"
             icon={<MessageSquare className="h-4 w-4 text-muted-foreground" />}
           />
           <StatCard
-            title="Forum Contributions"
-            value={stats.forumPosts}
-            description="Threads started and replies posted"
+            title="Total Clients"
+            value={stats.totalClients}
+            description="Clients you've helped"
             icon={<Users className="h-4 w-4 text-muted-foreground" />}
           />
           <StatCard
-            title="Uploaded Resources"
-            value={stats.resources}
-            description="Helpful articles and links"
+            title="Resources Uploaded"
+            value={stats.resourcesUploaded}
+            description="Resources shared with clients"
             icon={<BookOpen className="h-4 w-4 text-muted-foreground" />}
           />
         </div>

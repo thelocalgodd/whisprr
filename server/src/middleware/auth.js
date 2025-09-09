@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const { admin } = require('../config/firebase');
 const User = require('../models/User');
 
 const generateTokens = (userId) => {
@@ -71,44 +70,6 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-const authenticateFirebase = async (req, res, next) => {
-  try {
-    const firebaseToken = req.header('Firebase-Token');
-    
-    if (!firebaseToken) {
-      return next();
-    }
-    
-    const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-    
-    let user = await User.findOne({ firebaseUid: decodedToken.uid });
-    
-    if (!user) {
-      const username = `User_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      user = await User.create({
-        username,
-        firebaseUid: decodedToken.uid,
-        email: decodedToken.email,
-        authMethod: 'firebase',
-        isAnonymous: !decodedToken.email,
-        profile: {
-          displayName: decodedToken.name || username
-        },
-        security: {
-          emailVerified: decodedToken.email_verified || false
-        }
-      });
-    }
-    
-    const tokens = generateTokens(user._id);
-    req.firebaseUser = user;
-    req.tokens = tokens;
-    next();
-  } catch (error) {
-    console.error('Firebase authentication error:', error);
-    next();
-  }
-};
 
 const authorize = (...roles) => {
   return (req, res, next) => {
@@ -184,7 +145,6 @@ module.exports = {
   verifyToken,
   verifyRefreshToken,
   authenticate,
-  authenticateFirebase,
   authorize,
   verifyCounselor,
   optionalAuth,

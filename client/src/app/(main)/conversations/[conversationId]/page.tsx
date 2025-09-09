@@ -4,57 +4,107 @@ import React, { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, BadgeCheck } from "lucide-react";
+import { Send } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams } from "next/navigation";
-import { 
-  subscribeToMessages, 
-  sendMessage,
-  type FirebaseMessage 
-} from "@/services/firebase-messaging";
+import { conversationApi, messageApi, type Message } from "@/lib/api";
 import { toast } from "sonner";
 
+interface ConversationMessage {
+  id: string;
+  text: string;
+  senderId: string;
+  senderName: string;
+  timestamp: Date;
+  isCurrentUser: boolean;
+}
+
 export default function ConversationPage() {
-  const { user, firebaseUser } = useAuth();
+  const { user } = useAuth();
   const params = useParams();
   const conversationId = params.conversationId as string;
   
-  const [messages, setMessages] = useState<FirebaseMessage[]>([]);
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [conversationName, setConversationName] = useState("Conversation");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!conversationId) {
+    if (!conversationId || !user) {
       setIsLoading(false);
       return;
     }
 
-    // Subscribe to messages
-    const unsubscribe = subscribeToMessages(conversationId, (msgs) => {
-      setMessages(msgs);
-      setIsLoading(false);
-    });
-    unsubscribeRef.current = unsubscribe;
+    // Load conversation details and messages
+    const loadConversation = async () => {
+      try {
+        const convResponse = await conversationApi.getConversation(conversationId);
+        if (convResponse.success && convResponse.data) {
+          const conv = convResponse.data;
+          setConversationName(conv.name || 
+            (conv.isGroup ? "Group Chat" : 
+              conv.participants.find(p => p._id !== user._id)?.username || "Private Chat"));
+        }
 
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
+        await loadMessages();
+      } catch (error) {
+        console.error("Error loading conversation:", error);
+        toast.error("Failed to load conversation");
+      } finally {
+        setIsLoading(false);
       }
     };
-  }, [conversationId]);
+
+    loadConversation();
+
+    // Set up polling for new messages
+    const pollMessages = async () => {
+      await loadMessages();
+    };
+
+    pollingIntervalRef.current = setInterval(pollMessages, 2000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [conversationId, user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const loadMessages = async () => {
+    if (!conversationId || !user) return;
+
+    try {
+      const response = await messageApi.getMessages(conversationId);
+      
+      if (response.success && response.data) {
+        const formattedMessages: ConversationMessage[] = response.data.messages.map((msg: Message) => ({
+          id: msg._id,
+          text: msg.content.text,
+          senderId: msg.sender._id,
+          senderName: msg.sender.username || msg.sender.fullName || "User",
+          timestamp: new Date(msg.createdAt),
+          isCurrentUser: msg.sender._id === user._id
+        }));
+        
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error("Error loading messages:", error);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !conversationId || isSending) return;
     
-    const currentUser = firebaseUser || user;
-    if (!currentUser) {
+    if (!user) {
       toast.error("Please sign in to send messages");
       return;
     }
@@ -64,10 +114,18 @@ export default function ConversationPage() {
     setInput("");
 
     try {
-      const senderName = user?.username || 
-        (firebaseUser?.isAnonymous ? `Anonymous-${firebaseUser.uid.slice(0, 6)}` : firebaseUser?.displayName || "User");
-      
-      await sendMessage(conversationId, messageText, senderName);
+      const response = await messageApi.sendMessage(conversationId, {
+        content: {
+          text: messageText,
+          type: 'text'
+        },
+        messageType: 'text'
+      });
+
+      if (response.success) {
+        // Reload messages to get the new message
+        await loadMessages();
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
@@ -83,9 +141,9 @@ export default function ConversationPage() {
     }
   };
 
-  if (!firebaseUser && !user) {
+  if (!user) {
     return (
-      <Card className="w-full h-full flex flex-col shadow-none border-none">
+      <Card className="w-full h-[calc(100vh-3rem)] flex flex-col shadow-none border-none">
         <div className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Please sign in to use the chat</p>
         </div>
@@ -95,7 +153,7 @@ export default function ConversationPage() {
 
   if (isLoading) {
     return (
-      <Card className="w-full h-full flex flex-col shadow-none border-none">
+      <Card className="w-full h-[calc(100vh-3rem)] flex flex-col shadow-none border-none">
         <div className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Loading conversation...</p>
         </div>
@@ -103,53 +161,52 @@ export default function ConversationPage() {
     );
   }
 
-  const currentUserId = firebaseUser?.uid || user?.username || "";
-
   return (
-    <Card className="w-full h-full flex flex-col shadow-none border-none">
-      <div className="flex-1 p-4 overflow-y-auto">
-        {messages.map((msg) => {
-          const isCurrentUser = msg.senderId === currentUserId;
-          return (
+    <Card className="w-full h-[calc(100vh-3rem)] flex flex-col shadow-none border-none">
+      <div className="border-b px-4 py-3">
+        <h2 className="font-semibold">{conversationName}</h2>
+      </div>
+      <div className="flex-1 p-4 overflow-y-auto bg-stone-50 dark:bg-stone-900">
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            No messages yet. Start the conversation!
+          </div>
+        ) : (
+          messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex mb-4 ${isCurrentUser ? "justify-end" : "justify-start"}`}
+              className={`flex mb-4 ${msg.isCurrentUser ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`p-3 rounded-lg max-w-xs ${
-                  isCurrentUser
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                  msg.isCurrentUser
+                    ? "bg-blue-500 text-white"
+                    : "bg-stone-200 dark:bg-stone-800"
                 }`}
               >
-                {!isCurrentUser && (
-                  <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                {!msg.isCurrentUser && (
+                  <p className="text-xs font-semibold mb-1">
                     {msg.senderName}
-                    {msg.isAnonymous && (
-                      <span className="text-xs opacity-70">(Anonymous)</span>
-                    )}
                   </p>
                 )}
-                <p className="text-sm">{msg.text}</p>
-                {msg.timestamp && (
-                  <p
-                    className={`text-xs mt-1 ${
-                      isCurrentUser
-                        ? "text-primary-foreground/70"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                    })}
-                  </p>
-                )}
+                <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                <p
+                  className={`text-xs mt-1 ${
+                    msg.isCurrentUser
+                      ? "text-white/70"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {msg.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </p>
               </div>
             </div>
-          );
-        })}
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
       <div className="p-4 border-t">

@@ -12,6 +12,7 @@ export interface RegisterResponse {
   success: boolean;
   message: string;
   user: User;
+  token: string;
 }
 
 // Auth service functions that wrap the API calls
@@ -75,10 +76,17 @@ export const Register = async (
     });
 
     if (response.success && response.data) {
+      // Store token in localStorage
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+      
       return {
         success: true,
         message: response.message || 'Registration successful',
         user: response.data.user,
+        token: response.data.token || '',
       };
     } else {
       throw new Error(response.error || 'Registration failed');

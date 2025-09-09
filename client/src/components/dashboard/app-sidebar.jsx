@@ -8,14 +8,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { Logout } from "@/services/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
+  const { logout } = useAuth();
 
   const isActive = (path) => {
     // Exact match for dashboard, prefix match for others
@@ -50,11 +50,9 @@ export function AppSidebar() {
 
   const handleSignOut = async () => {
     try {
-      await Logout();
-      router.push("/login");
+      await logout();
     } catch (error) {
       console.error("Failed to sign out:", error);
-      // Here you could add a user-facing error message
     }
   };
 

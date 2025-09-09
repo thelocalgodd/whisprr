@@ -15,7 +15,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import { authApi, conversationApi, groupApi, resourceApi } from "@/lib/api";
+import { conversationApi, groupApi, resourceApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const QuickAction = ({ title, href }: { title: string; href: string }) => (
@@ -123,7 +123,7 @@ function DashboardPage() {
 
         // Create recent activities from conversations
         if (conversationsResponse.success && conversationsResponse.data && conversationsResponse.data.length > 0) {
-          const activities: Activity[] = conversationsResponse.data.slice(0, 3).map((conv: any) => ({
+          const activities: Activity[] = conversationsResponse.data.slice(0, 3).map((conv) => ({
             type: conv.isGroup ? "forum" : "conversation",
             title: conv.isGroup ? conv.name || "Group Chat" : "Private Conversation",
             time: conv.lastMessage ? new Date(conv.lastMessage.createdAt).toLocaleDateString() : "Recent"

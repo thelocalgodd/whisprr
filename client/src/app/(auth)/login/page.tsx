@@ -35,10 +35,10 @@ const formSchema = z.object({
 });
 
 function Login() {
-  const { login, loginAnonymously } = useAuth();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isAnonymousLoading, setIsAnonymousLoading] = useState(false);
-  
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -75,7 +75,8 @@ function Login() {
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
           <CardDescription>
-            Enter your credentials to access your account or continue anonymously.
+            Enter your credentials to access your account or continue
+            anonymously.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -88,9 +89,9 @@ function Login() {
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Your username" 
-                        {...field} 
+                      <Input
+                        placeholder="Your username"
+                        {...field}
                         disabled={isLoading || isAnonymousLoading}
                       />
                     </FormControl>
@@ -116,14 +117,14 @@ function Login() {
                   </FormItem>
                 )}
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full"
                 disabled={isLoading || isAnonymousLoading}
               >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
-              
+
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" />
@@ -134,18 +135,7 @@ function Login() {
                   </span>
                 </div>
               </div>
-              
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleAnonymousLogin}
-                disabled={isLoading || isAnonymousLoading}
-              >
-                <UserCircle className="mr-2 h-4 w-4" />
-                {isAnonymousLoading ? "Signing in..." : "Continue Anonymously"}
-              </Button>
-              
+
               <div className="mt-4 text-center text-sm">
                 Don&apos;t have an account?{" "}
                 <Link href="/register" className="underline">
