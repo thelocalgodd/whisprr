@@ -15,7 +15,13 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import { authApi, conversationApi, groupApi, resourceApi, counselorApi } from "@/lib/api";
+import {
+  authApi,
+  conversationApi,
+  groupApi,
+  resourceApi,
+  counselorApi,
+} from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const QuickAction = ({ title, href }: { title: string; href: string }) => (
@@ -99,21 +105,34 @@ function DashboardPage() {
         // Fetch user profile
         if (authUser) {
           setUser({
-            name: authUser.profile?.displayName || authUser.fullName || authUser.username || "Anonymous"
+            name:
+              authUser.profile?.displayName ||
+              authUser.fullName ||
+              authUser.username ||
+              "Anonymous",
           });
         }
 
         // Fetch conversations count
         const conversationsResponse = await conversationApi.getConversations();
-        const conversationsCount = conversationsResponse.success && conversationsResponse.data ? conversationsResponse.data.length : 0;
+        const conversationsCount =
+          conversationsResponse.success && conversationsResponse.data
+            ? conversationsResponse.data.length
+            : 0;
 
         // Fetch groups count (as forum posts)
         const groupsResponse = await groupApi.getGroups();
-        const groupsCount = groupsResponse.success && groupsResponse.data ? groupsResponse.data.groups.length : 0;
+        const groupsCount =
+          groupsResponse.success && groupsResponse.data
+            ? groupsResponse.data.groups.length
+            : 0;
 
         // Fetch resources count
         const resourcesResponse = await resourceApi.getResources();
-        const resourcesCount = resourcesResponse.success && resourcesResponse.data ? resourcesResponse.data.resources.length : 0;
+        const resourcesCount =
+          resourcesResponse.success && resourcesResponse.data
+            ? resourcesResponse.data.resources.length
+            : 0;
 
         setStats({
           conversations: conversationsCount,
@@ -122,15 +141,24 @@ function DashboardPage() {
         });
 
         // Create recent activities from conversations
-        if (conversationsResponse.success && conversationsResponse.data && conversationsResponse.data.length > 0) {
-          const activities: Activity[] = conversationsResponse.data.slice(0, 3).map((conv: any) => ({
-            type: conv.isGroup ? "forum" : "conversation",
-            title: conv.isGroup ? conv.name || "Group Chat" : "Private Conversation",
-            time: conv.lastMessage ? new Date(conv.lastMessage.createdAt).toLocaleDateString() : "Recent"
-          }));
+        if (
+          conversationsResponse.success &&
+          conversationsResponse.data &&
+          conversationsResponse.data.length > 0
+        ) {
+          const activities: Activity[] = conversationsResponse.data
+            .slice(0, 3)
+            .map((conv: any) => ({
+              type: conv.isGroup ? "forum" : "conversation",
+              title: conv.isGroup
+                ? conv.name || "Group Chat"
+                : "Private Conversation",
+              time: conv.lastMessage
+                ? new Date(conv.lastMessage.createdAt).toLocaleDateString()
+                : "Recent",
+            }));
           setRecentActivities(activities);
         }
-
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -167,7 +195,7 @@ function DashboardPage() {
             icon={<Users className="h-4 w-4 text-muted-foreground" />}
           />
           <StatCard
-            title="Saved Resources"
+            title="Uploaded Resources"
             value={stats.resources}
             description="Helpful articles and links"
             icon={<BookOpen className="h-4 w-4 text-muted-foreground" />}
@@ -213,7 +241,9 @@ function DashboardPage() {
                   />
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground">No recent activity.</p>
+                <p className="text-sm text-muted-foreground">
+                  No recent activity.
+                </p>
               )}
             </CardContent>
           </Card>

@@ -15,10 +15,10 @@ export const getGroups = async (params?: {
   limit?: number;
 }): Promise<{ groups: Group[]; pagination?: any }> => {
   try {
-    const response = await groupApi.getGroups(params);
+    const response = await groupApi.getGroups();
     
-    if (response.success && response.data) {
-      return response.data;
+    if (response) {
+      return response;
     }
     
     return { groups: [] };
@@ -32,8 +32,8 @@ export const getGroup = async (groupId: string): Promise<Group | null> => {
   try {
     const response = await groupApi.getGroup(groupId);
     
-    if (response.success && response.data) {
-      return response.data;
+    if (response) {
+      return response;
     }
     
     return null;

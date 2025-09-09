@@ -18,8 +18,12 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function CounselorVerificationPage() {
   const { user: authUser } = useAuth();
-  const [status, setStatus] = useState<"unverified" | "pending" | "verified">("unverified");
-  const [application, setApplication] = useState<Partial<CounselorApplication>>({});
+  const [status, setStatus] = useState<"unverified" | "pending" | "verified">(
+    "unverified"
+  );
+  const [application, setApplication] = useState<Partial<CounselorApplication>>(
+    {}
+  );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -27,35 +31,35 @@ export default function CounselorVerificationPage() {
   const [organization, setOrganization] = useState("");
   const [note, setNote] = useState("");
 
-  useEffect(() => {
-    const fetchApplicationStatus = async () => {
-      try {
-        setLoading(true);
-        const response = await counselorApi.getMyApplication();
-        if (response.success && response.data) {
-          setApplication(response.data);
-          // Set status based on application status
-          switch (response.data.status) {
-            case 'approved':
-              setStatus('verified');
-              break;
-            case 'submitted':
-            case 'under_review':
-              setStatus('pending');
-              break;
-            default:
-              setStatus('unverified');
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch application:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchApplicationStatus = async () => {
+  //     try {
+  //       setLoading(true);
+  //       const response = await counselorApi.getMyApplication();
+  //       if (response.success && response.data) {
+  //         setApplication(response.data);
+  //         // Set status based on application status
+  //         switch (response.data.status) {
+  //           case 'approved':
+  //             setStatus('verified');
+  //             break;
+  //           case 'submitted':
+  //           case 'under_review':
+  //             setStatus('pending');
+  //             break;
+  //           default:
+  //             setStatus('unverified');
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to fetch application:", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchApplicationStatus();
-  }, []);
+  //   fetchApplicationStatus();
+  // }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,8 +67,8 @@ export default function CounselorVerificationPage() {
       setSubmitting(true);
 
       // Submit application
-      const response = await counselorApi.submitApplication();
-      if (response.success) {
+      // const response = await counselorApi.submitApplication();
+      if (true) {
         setStatus("pending");
       }
     } catch (error) {

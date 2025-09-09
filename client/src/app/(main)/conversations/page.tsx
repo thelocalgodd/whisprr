@@ -7,13 +7,19 @@ import { Input } from "@/components/ui/input";
 import { BadgeCheck, Bot, Search, Send } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { conversationApi, messageApi, type Conversation, type Message } from "@/lib/api";
+import {
+  conversationApi,
+  messageApi,
+  type Conversation,
+  type Message,
+} from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function ConversationsPage() {
   const { user: authUser } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [selectedConversation, setSelectedConversation] =
+    useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -42,7 +48,9 @@ export default function ConversationsPage() {
     const fetchMessages = async () => {
       if (selectedConversation) {
         try {
-          const response = await messageApi.getMessages(selectedConversation._id);
+          const response = await messageApi.getMessages(
+            selectedConversation._id
+          );
           if (response.success && response.data) {
             setMessages(response.data.messages);
           }
@@ -55,38 +63,38 @@ export default function ConversationsPage() {
     fetchMessages();
   }, [selectedConversation]);
 
-
   const handleSendMessage = async () => {
     if (selectedConversation && newMessage.trim()) {
       try {
         const response = await messageApi.sendMessage({
           conversationId: selectedConversation._id,
           content: newMessage.trim(),
-          messageType: 'text'
+          messageType: "text",
         });
 
         if (response.success && response.data) {
           // Refresh messages
-          const messagesResponse = await messageApi.getMessages(selectedConversation._id);
+          const messagesResponse = await messageApi.getMessages(
+            selectedConversation._id
+          );
           if (messagesResponse.success && messagesResponse.data) {
             setMessages(messagesResponse.data.messages);
           }
         }
         setNewMessage("");
       } catch (error) {
-        console.error('Failed to send message:', error);
+        console.error("Failed to send message:", error);
       }
     }
   };
 
   const filteredConversations = conversations.filter((convo) => {
     const searchableText = convo.participants
-      .map(p => p.username)
-      .join(' ')
+      .map((p) => p.username)
+      .join(" ")
       .toLowerCase();
     return searchableText.includes(searchTerm.toLowerCase());
   });
-
 
   return (
     <Card className="w-full shadow-none h-[calc(100vh-4rem)]">
@@ -128,14 +136,16 @@ export default function ConversationsPage() {
                   <div className="flex items-center w-full">
                     <p className="font-semibold w-full">
                       {convo.participants
-                        .filter(p => p._id !== 'currentUserId') // Replace with actual current user ID
-                        .map(p => p.username)
-                        .join(', ') || 'Conversation'}
+                        .filter((p) => p._id !== "currentUserId") // Replace with actual current user ID
+                        .map((p) => p.username)
+                        .join(", ") || "Conversation"}
                     </p>
-                    {convo.participants.some(p => p.role === "counselor") && (
+                    {convo.participants.some((p) => p.role === "counselor") && (
                       <BadgeCheck
                         className={`w-5 h-5 ml-2 ${
-                          convo.participants.some(p => p.isVerified) ? "text-blue-500" : "text-gray-400"
+                          convo.participants.some((p) => p.isVerified)
+                            ? "text-blue-500"
+                            : "text-gray-400"
                         }`}
                       />
                     )}
@@ -157,14 +167,18 @@ export default function ConversationsPage() {
                 <div className="flex-1 flex items-center">
                   <p className="font-semibold">
                     {selectedConversation.participants
-                      .filter(p => p._id !== 'currentUserId') // Replace with actual current user ID
-                      .map(p => p.username)
-                      .join(', ') || 'Conversation'}
+                      .filter((p) => p._id !== "currentUserId") // Replace with actual current user ID
+                      .map((p) => p.username)
+                      .join(", ") || "Conversation"}
                   </p>
-                  {selectedConversation.participants.some(p => p.role === "counselor") && (
+                  {selectedConversation.participants.some(
+                    (p) => p.role === "counselor"
+                  ) && (
                     <BadgeCheck
                       className={`w-5 h-5 ml-2 ${
-                        selectedConversation.participants.some(p => p.isVerified)
+                        selectedConversation.participants.some(
+                          (p) => p.isVerified
+                        )
                           ? "text-blue-500"
                           : "text-gray-400"
                       }`}
@@ -234,7 +248,10 @@ export default function ConversationsPage() {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-muted-foreground">No conversations available or select a conversation to start chatting.</p>
+              <p className="text-muted-foreground">
+                No conversations available or select a conversation to start
+                chatting.
+              </p>
             </div>
           )}
         </div>

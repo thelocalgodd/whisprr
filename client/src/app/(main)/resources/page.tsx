@@ -48,9 +48,10 @@ const ResourcesPage = () => {
       try {
         setLoading(true);
         const response = await resourceApi.getResources();
-        console.log("Fetched resources:", response);
-        if (response.success && response.data) {
-          setResources(response.data.resources);
+        // console.log(response.resources);
+        if (response) {
+          console.log("response success");
+          setResources(response.resources);
         }
       } catch (error) {
         console.error("Failed to fetch resources:", error);
@@ -96,15 +97,14 @@ const ResourcesPage = () => {
                 <CardDescription className="text-sm text-gray-600 pt-2">
                   {resource.description}
                 </CardDescription>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
+                <div className="flex flex-col items-center gap-4 text-sm text-muted-foreground pt-2">
                   <span>{resource.metadata.views} views</span>
-                  <span>By {resource.createdBy.username}</span>
                   {resource.metadata.likes > 0 && (
                     <span>{resource.metadata.likes} likes</span>
                   )}
                 </div>
               </CardHeader>
-              <CardFooter className="w-48 flex-shrink-0 space-y-2">
+              <CardFooter className="w-48 flex-col flex-shrink-0 space-y-2">
                 <Button onClick={() => handleView(resource)} className="w-full">
                   <Eye className="w-4 h-4 mr-2" />
                   {resource.type === "pdf" ? "Download" : "View"}

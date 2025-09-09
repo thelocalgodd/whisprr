@@ -432,7 +432,7 @@ export const groupApi = {
     search?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<{ groups: Group[]; pagination: any }>> => {
+  }): Promise<ApiResponse<{ groups: Group[]; }>> => {
     const searchParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -442,7 +442,7 @@ export const groupApi = {
       });
     }
     
-    const response = await api.get(`/groups?${searchParams.toString()}`);
+    const response = await api.get(`/groups`);
     return handleResponse(response);
   },
   
@@ -553,7 +553,7 @@ export const resourceApi = {
       });
     }
     
-    const response = await api.get(`/resources?${searchParams.toString()}`);
+    const response = await api.get(`/resources`);
     return handleResponse(response);
   },
   

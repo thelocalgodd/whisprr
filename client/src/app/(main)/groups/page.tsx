@@ -37,7 +37,8 @@ export default function GroupsPage() {
       try {
         setLoading(true);
         setError(null);
-        const result = await getGroups({ limit: 20 });
+        const result = await getGroups();
+        console.log("Fetched groups:", result);
         setGroups(result.groups);
         setPagination(result.pagination);
       } catch (error: any) {

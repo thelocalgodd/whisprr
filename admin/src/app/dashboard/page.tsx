@@ -10,23 +10,11 @@ import {
   Tooltip,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  TrendingUp,
-  TrendingDown,
-  Users,
-  MessageSquare,
-  AlertCircle,
-} from "lucide-react";
+import { TrendingUp, Users, MessageSquare, AlertCircle } from "lucide-react";
 import { dashboardApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-
-const COLORS = ["#0ea5e9", "#10b981", "#f59e0b"];
-
 interface AnalyticsData {
   overview: {
     totalUsers: number;

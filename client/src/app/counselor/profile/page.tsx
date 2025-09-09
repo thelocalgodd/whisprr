@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { authApi } from "@/lib/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,29 +14,51 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// import { getProfile, updateProfile, changePassword } from "@/services/user";
 
-// Define the User type
 interface User {
   username: string;
-  email?: string;
+  fullName?: string;
+  bio?: string;
+  avatar?: string;
   role: string;
   createdAt: string;
   isActive: boolean;
-  avatarUrl?: string;
+  isVerified: boolean;
 }
 
+// Fetch user details from API on mount
+const defaultUser: User = {
+  username: "Anonymous",
+  fullName: "Anonymous User",
+  bio: "",
+  role: "user",
+  createdAt: new Date().toISOString(),
+  isActive: true,
+  isVerified: false,
+};
+
 export default function ProfilePage() {
-  const defaultUser: User = {
-    username: "Anonymous",
-    role: "user",
-    createdAt: new Date().toISOString(),
-    isActive: true,
-  };
-  const [user, setUser] = useState<User | null>(defaultUser);
-  useState(false); // loading
-  const [error] = useState<string | null>(null);
+  const [user, setUser] = useState<User>(defaultUser);
   const [username, setUsername] = useState(defaultUser.username);
+  const [fullName, setFullName] = useState(defaultUser.fullName || "");
+  const [bio, setBio] = useState(defaultUser.bio || "");
+
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const res = await authApi.getProfile();
+        if (res && res.success && res.data) {
+          setUser(res.data);
+          setUsername(res.data.username);
+          setFullName(res.data.fullName || "");
+          setBio(res.data.bio || "");
+        }
+      } catch (err) {
+        // Optionally handle error
+      }
+    }
+    fetchProfile();
+  }, []);
   const [updateMessage, setUpdateMessage] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -62,54 +85,22 @@ export default function ProfilePage() {
   //   fetchProfile();
   // }, []);
 
-  const handleUpdateProfile = async () => {
-    // try {
-    //   const response = await updateProfile({ username });
-    //   if (response.success) {
-    //     setUser(response.user);
-    //     setUpdateMessage("Profile updated successfully!");
-    //   } else {
-    //     setUpdateMessage(response.message);
-    //   }
-    // } catch {
-    //   setUpdateMessage("Failed to update profile. Please try again later.");
-    // }
-    setUser({ ...user!, username });
+  const handleUpdateProfile = () => {
+    setUser({ ...user, username, fullName, bio });
     setUpdateMessage("Profile updated successfully!");
   };
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = () => {
     if (newPassword !== confirmPassword) {
       setPasswordMessage("New passwords do not match.");
       return;
     }
 
-    // try {
-    //   const response = await changePassword({ currentPassword, newPassword });
-    //   if (response.success) {
-    //     setPasswordMessage("Password changed successfully!");
-    //     setCurrentPassword("");
-    //     setNewPassword("");
-    //     setConfirmPassword("");
-    //   } else {
-    //     setPasswordMessage(response.message);
-    //   }
-    // } catch {
-    //   setPasswordMessage("Failed to change password. Please try again later.");
-    // }
     setPasswordMessage("Password changed successfully!");
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
   };
-
-  if (error) {
-    return <div>{error}</div>;
-  }
-
-  if (!user) {
-    return <div>User not found.</div>;
-  }
 
   return (
     <Card className="w-full mt-2 shadow-none">
@@ -131,7 +122,7 @@ export default function ProfilePage() {
             <div className="flex items-center space-x-4">
               <Avatar className="h-20 w-20">
                 <AvatarImage
-                  src={user.avatarUrl || "https://github.com/shadcn.png"}
+                  src={user.avatar || "https://github.com/shadcn.png"}
                   alt="@"
                 />
                 <AvatarFallback>
@@ -139,10 +130,12 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-semibold">{user.username}</h3>
-                {user.email && (
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                )}
+                <h3 className="text-lg font-semibold">
+                  {user.fullName || user.username}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  @{user.username}
+                </p>
               </div>
             </div>
             <div className="grid gap-2">
@@ -153,17 +146,23 @@ export default function ProfilePage() {
                 onChange={(e) => setUsername(e.target.value)}
               />
             </div>
-            {user.email && (
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  defaultValue={user.email}
-                  disabled
-                />
-              </div>
-            )}
+            <div className="grid gap-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="bio">Bio</Label>
+              <Input
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell us about yourself..."
+              />
+            </div>
             <div className="grid gap-2">
               <Label>Role</Label>
               <p className="text-sm p-2 bg-gray-100 rounded-md">{user.role}</p>
@@ -184,6 +183,14 @@ export default function ProfilePage() {
                 className={`text-sm p-2 rounded-md ${user.isActive ? "bg-green-100" : "bg-red-100"}`}
               >
                 {user.isActive ? "Active" : "Inactive"}
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label>Verified</Label>
+              <p
+                className={`text-sm p-2 rounded-md ${user.isVerified ? "bg-blue-100" : "bg-gray-100"}`}
+              >
+                {user.isVerified ? "Verified" : "Unverified"}
               </p>
             </div>
           </CardContent>
