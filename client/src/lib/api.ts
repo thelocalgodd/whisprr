@@ -213,23 +213,8 @@ export const userApi = {
 
 // Conversations API
 export const conversationApi = {
-  getConversations: () => 
-    apiClient.get<Conversation[]>('/conversations'),
-  
-  getConversation: (conversationId: string) => 
-    apiClient.get<Conversation>(`/conversations/${conversationId}`),
-  
-  createConversation: (participantIds: string[]) => 
-    apiClient.post('/conversations/create', { participantIds }),
-  
-  deleteConversation: (conversationId: string) => 
-    apiClient.delete(`/conversations/${conversationId}`),
-  
-  leaveConversation: (conversationId: string) => 
-    apiClient.post(`/conversations/${conversationId}/leave`),
-  
-  archiveConversation: (conversationId: string) => 
-    apiClient.post(`/conversations/${conversationId}/archive`),
+  getConversations: () =>
+    apiClient.get<Conversation[]>('/messages/conversations'),
 };
 
 // Messages API

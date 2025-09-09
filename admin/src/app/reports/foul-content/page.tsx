@@ -40,16 +40,16 @@ export default function FoulContentPage() {
       try {
         setLoading(true);
         const response = await contentFlagApi.getContentFlags({ limit: 50 });
-        
+
         if (response.success && response.data) {
           setContentFlags(response.data.flags);
           setError(null);
         } else {
-          setError(response.error || 'Failed to fetch content flags');
+          setError(response.error || "Failed to fetch content flags");
         }
       } catch (err) {
-        setError('An error occurred while fetching content flags');
-        console.error('Content flags fetch error:', err);
+        setError("An error occurred while fetching content flags");
+        console.error("Content flags fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -58,16 +58,27 @@ export default function FoulContentPage() {
     fetchContentFlags();
   }, []);
 
-  const handleUpdateStatus = async (flagId: string, status: string, action?: string) => {
+  const handleUpdateStatus = async (
+    flagId: string,
+    status: string,
+    action?: string
+  ) => {
     try {
-      const response = await contentFlagApi.updateContentFlag(flagId, { status, action });
+      const response = await contentFlagApi.updateContentFlag(flagId, {
+        status,
+        action,
+      });
       if (response.success) {
-        setContentFlags(contentFlags.map(flag => 
-          flag._id === flagId ? { ...flag, status } : flag
-        ));
+        setContentFlags(
+          contentFlags?.map((flag) =>
+            flag._id === flagId
+              ? { ...flag, status: status as ContentFlag["status"] }
+              : flag
+          )
+        );
       }
     } catch (err) {
-      console.error('Update content flag status error:', err);
+      console.error("Update content flag status error:", err);
     }
   };
 
@@ -140,18 +151,28 @@ export default function FoulContentPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contentFlags.map((flag) => (
+              {contentFlags?.map((flag) => (
                 <TableRow key={flag._id}>
                   <TableCell className="font-medium">
-                    {flag.userId?.username || 'Unknown'}
+                    {flag.userId?.username || "Unknown"}
                   </TableCell>
-                  <TableCell className="capitalize">{flag.contentType}</TableCell>
+                  <TableCell className="capitalize">
+                    {flag.contentType}
+                  </TableCell>
                   <TableCell className="font-mono text-xs max-w-[200px] truncate">
                     {flag.contentSnippet}
                   </TableCell>
                   <TableCell className="capitalize">{flag.category}</TableCell>
                   <TableCell>
-                    <Badge variant={flag.severity === 'critical' ? 'destructive' : flag.severity === 'high' ? 'default' : 'secondary'}>
+                    <Badge
+                      variant={
+                        flag.severity === "critical"
+                          ? "destructive"
+                          : flag.severity === "high"
+                            ? "default"
+                            : "secondary"
+                      }
+                    >
                       {flag.severity}
                     </Badge>
                   </TableCell>
@@ -159,7 +180,15 @@ export default function FoulContentPage() {
                     {new Date(flag.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={flag.status === 'open' ? 'destructive' : flag.status === 'actioned' ? 'default' : 'secondary'}>
+                    <Badge
+                      variant={
+                        flag.status === "open"
+                          ? "destructive"
+                          : flag.status === "actioned"
+                            ? "default"
+                            : "secondary"
+                      }
+                    >
                       {flag.status}
                     </Badge>
                   </TableCell>
@@ -171,10 +200,25 @@ export default function FoulContentPage() {
                     </Button>
                     {flag.status === "open" && (
                       <>
-                        <Button size="sm" onClick={() => handleUpdateStatus(flag._id, 'actioned', 'content_removed')}>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            handleUpdateStatus(
+                              flag._id,
+                              "actioned",
+                              "content_removed"
+                            )
+                          }
+                        >
                           Take Action
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleUpdateStatus(flag._id, 'dismissed')}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleUpdateStatus(flag._id, "dismissed")
+                          }
+                        >
                           Dismiss
                         </Button>
                       </>
@@ -182,9 +226,12 @@ export default function FoulContentPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {contentFlags.length === 0 && (
+              {contentFlags?.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={8}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No content flags found
                   </TableCell>
                 </TableRow>

@@ -1,17 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
-const API_BASE_URL = "https://whisprr-api.onrender.com/api"
+const API_BASE_URL = "https://whisprr-api.onrender.com/api";
 
-// Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
 
-// Response interceptor to handle errors globally
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
@@ -20,140 +17,72 @@ api.interceptors.response.use(
   }
 );
 
-// Generic API response handler
 const handleApiResponse = async <T>(apiCall: () => Promise<AxiosResponse<T>>) => {
   try {
-    const response = await apiCall();
-    return response.data;
+    const { data } = await apiCall();
+    return { success: true, data };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      const message = error.response?.data?.message || error.message || 'An error occurred';
-      throw new Error(message);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || error.message || 'An error occurred' 
+      };
     }
-    throw error;
+    return { success: false, error: 'An unexpected error occurred' };
   }
 };
 
-// Dashboard Analytics API
+const createQueryString = (params: Record<string, any>) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined) searchParams.append(key, value.toString());
+  });
+  return searchParams.toString();
+};
+
 export const dashboardApi = {
-  getAnalytics: () => 
-    handleApiResponse(() => api.get('/admin/dashboard')),
+  getAnalytics: () => handleApiResponse(() => api.get('/admin/dashboard')),
+  getSystemHealth: () => handleApiResponse(() => api.get('/admin/system-health')),
 };
 
-// User Management API
+export const crisisApi = {
+  getCrisisAlerts: () => handleApiResponse(() => api.get('/admin/crisis-alerts')),
+  updateCrisisAlert: (messageId: string, data: any) =>
+    handleApiResponse(() => api.put(`/admin/crisis-alerts/${messageId}`, data)),
+};
+
 export const userApi = {
-  getUsers: (params: {
-    page?: number;
-    limit?: number;
-    role?: string;
-    status?: string;
-    search?: string;
-  } = {}) => {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        searchParams.append(key, value.toString());
-      }
-    });
-    const queryString = searchParams.toString();
-    return handleApiResponse(() => 
-      api.get(`/admin/users${queryString ? `?${queryString}` : ''}`)
-    );
-  },
-  
-  getUserById: (userId: string) => 
-    handleApiResponse(() => api.get(`/admin/users/${userId}`)),
-  
-  updateUserStatus: (userId: string, data: { isActive?: boolean; role?: string }) =>
-    handleApiResponse(() => api.put(`/admin/users/${userId}`, data)),
+  getUsers: (params = {}) => handleApiResponse(() => api.get(`/admin/users?${createQueryString(params)}`)),
+  getUserById: (userId: string) => handleApiResponse(() => api.get(`/admin/users/${userId}`)),
+  banUser: (userId: string) => handleApiResponse(() => api.post(`/admin/users/${userId}/ban`)),
+  unbanUser: (userId: string) => handleApiResponse(() => api.post(`/admin/users/${userId}/unban`)),
 };
 
-// Reports Management API
 export const reportApi = {
-  getReports: (params: {
-    page?: number;
-    limit?: number;
-    type?: string;
-    status?: string;
-    priority?: string;
-  } = {}) => {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        searchParams.append(key, value.toString());
-      }
-    });
-    const queryString = searchParams.toString();
-    return handleApiResponse(() => 
-      api.get(`/admin/reports${queryString ? `?${queryString}` : ''}`)
-    );
-  },
-  
-  getReportById: (reportId: string) => 
-    handleApiResponse(() => api.get(`/admin/reports/${reportId}`)),
-  
-  updateReportStatus: (reportId: string, data: { status: string; reviewNotes?: string }) =>
-    handleApiResponse(() => api.put(`/admin/reports/${reportId}`, data)),
+  getReports: (params = {}) => handleApiResponse(() => api.get(`/reports?${createQueryString(params)}`)),
+  getReportById: (reportId: string) => handleApiResponse(() => api.get(`/reports/${reportId}`)),
+  reviewReport: (reportId: string, data: { status: string; reviewNotes?: string }) =>
+    handleApiResponse(() => api.post(`/reports/${reportId}/review`, data)),
 };
 
-// Content Flags Management API
 export const contentFlagApi = {
-  getContentFlags: (params: {
-    page?: number;
-    limit?: number;
-    category?: string;
-    status?: string;
-    severity?: string;
-  } = {}) => {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        searchParams.append(key, value.toString());
-      }
-    });
-    const queryString = searchParams.toString();
-    return handleApiResponse(() => 
-      api.get(`/admin/content-flags${queryString ? `?${queryString}` : ''}`)
-    );
-  },
-  
-  getContentFlagById: (flagId: string) => 
-    handleApiResponse(() => api.get(`/admin/content-flags/${flagId}`)),
-  
+  getContentFlags: (params = {}) => handleApiResponse(() => api.get(`/moderation/flagged?${createQueryString(params)}`)),
+  getContentFlagById: (flagId: string) => handleApiResponse(() => api.get(`/moderation/flagged/${flagId}`)),
   updateContentFlag: (flagId: string, data: { status: string; action?: string; actionNotes?: string }) =>
-    handleApiResponse(() => api.put(`/admin/content-flags/${flagId}`, data)),
+    handleApiResponse(() => api.put(`/moderation/flagged/${flagId}`, data)),
+  moderateMessage: (messageId: string, data: { action: string; reason?: string }) =>
+    handleApiResponse(() => api.post(`/moderation/messages/${messageId}`, data)),
 };
 
-// Counselor Verification API
 export const counselorApi = {
-  getPendingCounselors: (params: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  } = {}) => {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        searchParams.append(key, value.toString());
-      }
-    });
-    const queryString = searchParams.toString();
-    return handleApiResponse(() => 
-      api.get(`/admin/counselors/pending${queryString ? `?${queryString}` : ''}`)
-    );
-  },
-  
-  getCounselorById: (counselorId: string) => 
-    handleApiResponse(() => api.get(`/admin/counselors/${counselorId}`)),
-  
+  getPendingCounselors: (params = {}) =>
+    handleApiResponse(() => api.get(`/counselors/pending-verifications?${createQueryString(params)}`)),
+  getCounselorById: (counselorId: string) => handleApiResponse(() => api.get(`/counselors/${counselorId}`)),
   approveCounselor: (counselorId: string, data: { approvalNotes?: string }) =>
-    handleApiResponse(() => api.put(`/admin/counselors/${counselorId}/approve`, data)),
-  
+    handleApiResponse(() => api.post(`/counselors/${counselorId}/approve`, data)),
   rejectCounselor: (counselorId: string, data: { rejectionReason: string; rejectionNotes?: string }) =>
-    handleApiResponse(() => api.put(`/admin/counselors/${counselorId}/reject`, data)),
-  
-  requestMoreInfo: (counselorId: string, data: { requestedInfo: string; notes?: string }) =>
-    handleApiResponse(() => api.put(`/admin/counselors/${counselorId}/request-info`, data)),
+    handleApiResponse(() => api.post(`/counselors/${counselorId}/reject`, data)),
+  getApplicationStats: () => handleApiResponse(() => api.get('/counselors/stats')),
 };
 
 export default api;
