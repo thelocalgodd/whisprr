@@ -15,29 +15,42 @@ import {
   Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Users, MessageSquare, AlertCircle } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  MessageSquare,
+  AlertCircle,
+} from "lucide-react";
 import { dashboardApi } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 
 const COLORS = ["#0ea5e9", "#10b981", "#f59e0b"];
 
 interface AnalyticsData {
-  metrics: {
-    activeUsers: number;
-    messagesLast24h: number;
-    newSignups: number;
-    openReports: number;
-  };
-  charts: {
-    dailyActiveUsers: { day: string; users: number }[];
-    dailyMessages: { day: string; count: number }[];
-    dailyReports: { day: string; count: number }[];
-    userTypes: { name: string; value: number; color: string }[];
+  overview: {
+    totalUsers: number;
+    totalCounselors: number;
+    verifiedCounselors: number;
+    totalGroups: number;
+    totalMessages: number;
+    totalSessions: number;
+    activeUsersToday: number;
+    newUsersThisWeek: number;
+    messagesThisWeek: number;
+    sessionsThisWeek: number;
   };
   moderation: {
-    openReports: number;
-    pendingFlags: number;
-    totalFlags: number;
+    pendingVerifications: number;
+    flaggedMessages: number;
+    crisisAlerts: number;
+    reportedContent: number;
   };
+  charts: {
+    userGrowth: { _id: string; count: number }[];
+    messageVolume: { _id: string; count: number }[];
+  };
+  topGroups: any[];
 }
 
 export default function Dashboard() {
@@ -50,16 +63,20 @@ export default function Dashboard() {
       try {
         setLoading(true);
         const response = await dashboardApi.getAnalytics();
-        
+
         if (response.success && response.data) {
           setAnalytics(response.data);
           setError(null);
+        } else if (response.data) {
+          // Handle direct data response
+          setAnalytics(response.data);
+          setError(null);
         } else {
-          setError(response.error || 'Failed to fetch analytics');
+          setError(response.error || "Failed to fetch analytics");
         }
       } catch (err) {
-        setError('An error occurred while fetching analytics');
-        console.error('Dashboard analytics error:', err);
+        setError("An error occurred while fetching analytics");
+        console.error("Dashboard analytics error:", err);
       } finally {
         setLoading(false);
       }
@@ -130,55 +147,67 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.metrics.activeUsers.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              {analytics.overview.totalUsers.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-              +12% from yesterday
+              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />+
+              {analytics.overview.newUsersThisWeek} this week
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Messages (24h)
+              Total Messages
             </CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.metrics.messagesLast24h.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              {analytics.overview.totalMessages.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-              +8% from yesterday
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Session</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12m 33s</div>
-            <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingDown className="h-3 w-3 mr-1 text-red-500" />
-              -2% from yesterday
+              {analytics.overview.messagesThisWeek > 0 ? (
+                <>
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                  {analytics.overview.messagesThisWeek} this week
+                </>
+              ) : (
+                <>No messages this week</>
+              )}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              New Signups (24h)
+              Active Counselors
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.metrics.newSignups.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              {analytics.overview.verifiedCounselors}
+            </div>
             <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-              +24% from yesterday
+              {analytics.overview.totalCounselors} total counselors
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Today</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {analytics.overview.activeUsersToday.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground flex items-center">
+              {analytics.overview.sessionsThisWeek} sessions this week
             </p>
           </CardContent>
         </Card>
@@ -188,66 +217,74 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Daily Active Users</CardTitle>
+            <CardTitle>User Growth</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={analytics.charts.dailyActiveUsers}
-                margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "6px",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="users"
-                  stroke="#0ea5e9"
-                  strokeWidth={3}
-                  dot={{ fill: "#0ea5e9", strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {analytics.charts.userGrowth.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={analytics.charts.userGrowth}
+                  margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="_id" />
+                  <YAxis />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "white",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "6px",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#0ea5e9"
+                    strokeWidth={3}
+                    dot={{ fill: "#0ea5e9", strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No data available
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>User Distribution</CardTitle>
+            <CardTitle>Platform Stats</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={analytics.charts.userTypes}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) =>
-                    `${name} ${((percent || 0) * 100).toFixed(0)}%`
-                  }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {analytics.charts.userTypes.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="space-y-4 pt-8">
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Total Groups</span>
+                <span className="text-2xl font-bold">
+                  {analytics.overview.totalGroups}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Total Sessions</span>
+                <span className="text-2xl font-bold">
+                  {analytics.overview.totalSessions}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Sessions This Week</span>
+                <span className="text-2xl font-bold">
+                  {analytics.overview.sessionsThisWeek}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Messages This Week</span>
+                <span className="text-2xl font-bold">
+                  {analytics.overview.messagesThisWeek}
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -256,53 +293,58 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Messages Per Day</CardTitle>
+            <CardTitle>Message Volume</CardTitle>
           </CardHeader>
           <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={analytics.charts.dailyMessages}
-                margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "6px",
-                  }}
-                />
-                <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {analytics.charts.messageVolume.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={analytics.charts.messageVolume}
+                  margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="_id" />
+                  <YAxis />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "white",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "6px",
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No message data available
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Reports This Week</CardTitle>
+            <CardTitle>Top Groups</CardTitle>
           </CardHeader>
           <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={analytics.charts.dailyReports}
-                margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "6px",
-                  }}
-                />
-                <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {analytics.topGroups.length > 0 ? (
+              <div className="space-y-2">
+                {analytics.topGroups.map((group: any, index: number) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center"
+                  >
+                    <span className="text-sm">{group.name}</span>
+                    <Badge>{group.members} members</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No groups available
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -335,16 +377,28 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-sm">Open Reports</span>
-              <span className="text-sm font-medium text-yellow-600">{analytics.moderation.openReports}</span>
+              <span className="text-sm">Pending Verifications</span>
+              <span className="text-sm font-medium text-yellow-600">
+                {analytics.moderation.pendingVerifications}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm">Pending Reviews</span>
-              <span className="text-sm font-medium text-yellow-600">{analytics.moderation.pendingFlags}</span>
+              <span className="text-sm">Flagged Messages</span>
+              <span className="text-sm font-medium text-yellow-600">
+                {analytics.moderation.flaggedMessages}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm">Actions Today</span>
-              <span className="text-sm font-medium">12</span>
+              <span className="text-sm">Crisis Alerts</span>
+              <span className="text-sm font-medium text-red-600">
+                {analytics.moderation.crisisAlerts}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm">Reported Content</span>
+              <span className="text-sm font-medium text-yellow-600">
+                {analytics.moderation.reportedContent}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -355,20 +409,23 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-sm">This Week</span>
+              <span className="text-sm">New Users This Week</span>
               <span className="text-sm font-medium text-green-600">
-                +326 users
+                +{analytics.overview.newUsersThisWeek}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm">This Month</span>
-              <span className="text-sm font-medium text-green-600">
-                +1,247 users
+              <span className="text-sm">Total Users</span>
+              <span className="text-sm font-medium">
+                {analytics.overview.totalUsers}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm">Retention Rate</span>
-              <span className="text-sm font-medium">78%</span>
+              <span className="text-sm">Verified Counselors</span>
+              <span className="text-sm font-medium">
+                {analytics.overview.verifiedCounselors}/
+                {analytics.overview.totalCounselors}
+              </span>
             </div>
           </CardContent>
         </Card>

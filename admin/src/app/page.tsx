@@ -9,7 +9,7 @@ export default function AdminSplashPage() {
     // Navigate to dashboard after 5 seconds
     const timer = setTimeout(() => {
       router.push("/dashboard");
-    }, 10000);
+    }, 1000);
 
     // Cleanup timer if component unmounts
     return () => clearTimeout(timer);

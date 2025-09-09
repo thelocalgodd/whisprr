@@ -131,11 +131,7 @@ const randomBoolean = () => Math.random() > 0.5;
 const connectDB = async () => {
   try {
     await mongoose.connect(
-      process.env.MONGODB_URI || "mongodb://localhost:27017/whisprr",
-      {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      }
+      "mongodb+srv://thelocalgodd:!tlgspeed@whisprr.olusj6m.mongodb.net/?retryWrites=true&w=majority&appName=whisprr"
     );
     console.log("✅ Connected to MongoDB");
   } catch (error) {
