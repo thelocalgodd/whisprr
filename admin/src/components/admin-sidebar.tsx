@@ -2,7 +2,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Users, UserCheck, MessageSquare, Shield, Home, Bell } from "lucide-react";
+import {
+  Users,
+  UserCheck,
+  MessageSquare,
+  Shield,
+  Home,
+  Bell,
+} from "lucide-react";
 
 const menuItems = [
   {
@@ -30,11 +37,6 @@ const reportItems = [
     label: "Message Reports",
     href: "/reports/messages",
     icon: MessageSquare,
-  },
-  {
-    label: "Foul Content",
-    href: "/reports/foul-content",
-    icon: Shield,
   },
 ];
 
@@ -108,7 +110,7 @@ export function AdminSidebar() {
         <div className="pt-4">
           <div className="px-3 mb-2">
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Reports
+              Moderation
             </p>
           </div>
           {reportItems.map((item) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -13,20 +13,65 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BadgeCheck, Info } from "lucide-react";
+import { counselorApi, type CounselorApplication } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CounselorVerificationPage() {
-  const [status, setStatus] = useState<"unverified" | "pending" | "verified">(
-    "unverified"
-  );
+  const { user: authUser } = useAuth();
+  const [status, setStatus] = useState<"unverified" | "pending" | "verified">("unverified");
+  const [application, setApplication] = useState<Partial<CounselorApplication>>({});
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [fullName, setFullName] = useState("");
   const [licenseId, setLicenseId] = useState("");
   const [organization, setOrganization] = useState("");
   const [note, setNote] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchApplicationStatus = async () => {
+      try {
+        setLoading(true);
+        const response = await counselorApi.getMyApplication();
+        if (response.success && response.data) {
+          setApplication(response.data);
+          // Set status based on application status
+          switch (response.data.status) {
+            case 'approved':
+              setStatus('verified');
+              break;
+            case 'submitted':
+            case 'under_review':
+              setStatus('pending');
+              break;
+            default:
+              setStatus('unverified');
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch application:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplicationStatus();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, submit to backend then set pending
-    setStatus("pending");
+    try {
+      setSubmitting(true);
+
+      // Submit application
+      const response = await counselorApi.submitApplication();
+      if (response.success) {
+        setStatus("pending");
+      }
+    } catch (error) {
+      console.error("Failed to submit application:", error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

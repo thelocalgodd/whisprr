@@ -1,110 +1,237 @@
-import api from "@/utils/axios";
+import { authApi, type User, type ApiResponse } from '@/lib/api';
 
-interface User {
-  username: string;
-  role: string;
-}
-
-interface LoginResponse {
+// Re-export types for backward compatibility
+export interface LoginResponse {
   success: boolean;
   message: string;
   user: User;
   token: string;
 }
 
-interface RegisterResponse {
+export interface RegisterResponse {
   success: boolean;
   message: string;
   user: User;
 }
 
-const Login = async (username: string, password: string): Promise<LoginResponse> => {
+// Auth service functions that wrap the API calls
+export const Login = async (
+  usernameOrEmail: string, 
+  password: string
+): Promise<LoginResponse> => {
   try {
-    const response = await api.post("/auth/login", { username, password });
-    return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      // Server responded with a status other than 2xx
+    const response = await authApi.login({
+      ...(usernameOrEmail.includes('@') 
+        ? { email: usernameOrEmail } 
+        : { username: usernameOrEmail }
+      ),
+      password,
+    });
+
+    if (response.success && response.data) {
+      // Store token in localStorage
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      
       return {
-        success: false,
-        message: error.response.data?.message || "Login failed. Please try again.",
-        user: {
-          username: "",
-          role: "",
-        },
-        token: "",
-      };
-    } else if (error.request) {
-      // Request was made but no response received
-      return {
-        success: false,
-        message: "No response from server. Please check your network connection.",
-        user: {
-          username: "",
-          role: "",
-        },
-        token: "",
+        success: true,
+        message: response.message || 'Login successful',
+        user: response.data.user,
+        token: response.data.token,
       };
     } else {
-      // Something else happened
       return {
         success: false,
-        message: "An unexpected error occurred during login.",
-        user: {
-          username: "",
-          role: "",
-        },
-        token: "",
+        message: response.error || 'Login failed',
+        user: {} as User,
+        token: '',
       };
     }
+  } catch (error: any) {
+    console.error('Login error:', error);
+    return {
+      success: false,
+      message: error.message || 'An unexpected error occurred during login.',
+      user: {} as User,
+      token: '',
+    };
   }
 };
 
-const Register = async (
+export const Register = async (
   username: string,
+  email: string,
   password: string,
-  role: string
+  fullName: string,
+  role: string = 'user'
 ): Promise<RegisterResponse> => {
   try {
-    const response = await api.post("/auth/register", {
+    const response = await authApi.register({
       username,
+      email,
       password,
+      fullName,
       role,
     });
-    return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Registration failed. Please try again."
-      );
-    } else if (error.request) {
-      throw new Error(
-        "No response from server. Please check your network connection."
-      );
+
+    if (response.success && response.data) {
+      return {
+        success: true,
+        message: response.message || 'Registration successful',
+        user: response.data.user,
+      };
     } else {
-      throw new Error("An unexpected error occurred during registration.");
+      throw new Error(response.error || 'Registration failed');
     }
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    throw new Error(error.message || 'An unexpected error occurred during registration.');
   }
 };
 
-const Logout = async () => {
+export const Logout = async (): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await api.post("/auth/logout");
-    return response.data;
+    const response = await authApi.logout();
+    
+    // Clear local storage regardless of API response
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    return {
+      success: true,
+      message: response.message || 'Logout successful',
+    };
   } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Logout failed. Please try again."
-      );
-    } else if (error.request) {
-      throw new Error(
-        "No response from server. Please check your network connection."
-      );
-    } else {
-      throw new Error("An unexpected error occurred during logout.");
-    }
+    console.error('Logout error:', error);
+    
+    // Still clear local storage even if API call fails
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    return {
+      success: true,
+      message: 'Logout completed',
+    };
   }
 };
 
-export { Login, Register, Logout };
-export type { User, LoginResponse, RegisterResponse };
+export const GetProfile = async (): Promise<User | null> => {
+  try {
+    const response = await authApi.getProfile();
+    
+    if (response.success && response.data) {
+      // Update stored user data
+      localStorage.setItem('user', JSON.stringify(response.data));
+      return response.data;
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error('Get profile error:', error);
+    return null;
+  }
+};
+
+export const UpdateProfile = async (profileData: Partial<User>): Promise<User | null> => {
+  try {
+    const response = await authApi.updateProfile(profileData);
+    
+    if (response.success && response.data) {
+      // Update stored user data
+      localStorage.setItem('user', JSON.stringify(response.data));
+      return response.data;
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error('Update profile error:', error);
+    throw new Error(error.message || 'Failed to update profile');
+  }
+};
+
+export const ChangePassword = async (
+  currentPassword: string, 
+  newPassword: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await authApi.changePassword({
+      currentPassword,
+      newPassword,
+    });
+    
+    return {
+      success: response.success,
+      message: response.message || 'Password changed successfully',
+    };
+  } catch (error: any) {
+    console.error('Change password error:', error);
+    throw new Error(error.message || 'Failed to change password');
+  }
+};
+
+export const VerifyEmail = async (token: string): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await authApi.verifyEmail(token);
+    
+    return {
+      success: response.success,
+      message: response.message || 'Email verified successfully',
+    };
+  } catch (error: any) {
+    console.error('Email verification error:', error);
+    throw new Error(error.message || 'Failed to verify email');
+  }
+};
+
+export const RequestPasswordReset = async (email: string): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await authApi.requestPasswordReset(email);
+    
+    return {
+      success: response.success,
+      message: response.message || 'Password reset email sent',
+    };
+  } catch (error: any) {
+    console.error('Password reset request error:', error);
+    throw new Error(error.message || 'Failed to request password reset');
+  }
+};
+
+export const ResetPassword = async (
+  token: string, 
+  password: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await authApi.resetPassword({ token, password });
+    
+    return {
+      success: response.success,
+      message: response.message || 'Password reset successfully',
+    };
+  } catch (error: any) {
+    console.error('Password reset error:', error);
+    throw new Error(error.message || 'Failed to reset password');
+  }
+};
+
+// Utility functions
+export const isAuthenticated = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const token = localStorage.getItem('token');
+  return !!token;
+};
+
+export const getCurrentUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  const userStr = localStorage.getItem('user');
+  return userStr ? JSON.parse(userStr) : null;
+};
+
+export const getToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+};
+
+// Export types
+export type { User };
+export { authApi };

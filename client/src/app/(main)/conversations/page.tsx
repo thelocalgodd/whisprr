@@ -1,46 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BadgeCheck, Bot, Search, Send } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-
-
-interface User {
-  _id: string;
-  username: string;
-  role?: "user" | "counselor";
-  isVerified?: boolean;
-}
-
-interface Message {
-  _id: string;
-  sender: User;
-  content: string;
-  createdAt: string;
-}
-
-interface Conversation {
-  _id: string;
-  participants: User[];
-}
+import { conversationApi, messageApi, type Conversation, type Message } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ConversationsPage() {
-  const [conversations] = useState<Conversation[]>([]);
+  const { user: authUser } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [messages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setLoading(true);
+        const response = await conversationApi.getConversations();
+        if (response.success && response.data) {
+          setConversations(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch conversations:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleSendMessage = () => {
+    fetchConversations();
+  }, []);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (selectedConversation) {
+        try {
+          const response = await messageApi.getMessages(selectedConversation._id);
+          if (response.success && response.data) {
+            setMessages(response.data.messages);
+          }
+        } catch (error) {
+          console.error("Failed to fetch messages:", error);
+        }
+      }
+    };
+
+    fetchMessages();
+  }, [selectedConversation]);
+
+
+  const handleSendMessage = async () => {
     if (selectedConversation && newMessage.trim()) {
-      console.log('Send message:', newMessage.trim());
-      setNewMessage("");
+      try {
+        const response = await messageApi.sendMessage({
+          conversationId: selectedConversation._id,
+          content: newMessage.trim(),
+          messageType: 'text'
+        });
+
+        if (response.success && response.data) {
+          // Refresh messages
+          const messagesResponse = await messageApi.getMessages(selectedConversation._id);
+          if (messagesResponse.success && messagesResponse.data) {
+            setMessages(messagesResponse.data.messages);
+          }
+        }
+        setNewMessage("");
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      }
     }
   };
 
@@ -155,7 +190,7 @@ export default function ConversationsPage() {
                             : "bg-muted"
                         }`}
                       >
-                        <p className="text-sm">{msg.content}</p>
+                        <p className="text-sm">{msg.content.text}</p>
                         <p
                           className={`text-xs mt-1 ${
                             msg.sender._id === "currentUserId" // Replace with actual current user ID

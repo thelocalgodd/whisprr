@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -14,6 +15,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+import { authApi, conversationApi, groupApi, resourceApi, counselorApi } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const QuickAction = ({ title, href }: { title: string; href: string }) => (
   <Link
@@ -78,15 +81,65 @@ const RecentActivityItem = ({
 type Activity = { type: "conversation" | "forum"; title: string; time: string };
 
 function DashboardPage() {
-  const user = {
-    name: "Anonymous",
-  };
-  const stats = {
+  const { user: authUser } = useAuth();
+  const [user, setUser] = useState({ name: "Anonymous" });
+  const [stats, setStats] = useState({
     conversations: 0,
     forumPosts: 0,
     resources: 0,
-  };
-  const recentActivities: Activity[] = [];
+  });
+  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch user profile
+        if (authUser) {
+          setUser({
+            name: authUser.profile?.displayName || authUser.fullName || authUser.username || "Anonymous"
+          });
+        }
+
+        // Fetch conversations count
+        const conversationsResponse = await conversationApi.getConversations();
+        const conversationsCount = conversationsResponse.success && conversationsResponse.data ? conversationsResponse.data.length : 0;
+
+        // Fetch groups count (as forum posts)
+        const groupsResponse = await groupApi.getGroups();
+        const groupsCount = groupsResponse.success && groupsResponse.data ? groupsResponse.data.groups.length : 0;
+
+        // Fetch resources count
+        const resourcesResponse = await resourceApi.getResources();
+        const resourcesCount = resourcesResponse.success && resourcesResponse.data ? resourcesResponse.data.resources.length : 0;
+
+        setStats({
+          conversations: conversationsCount,
+          forumPosts: groupsCount,
+          resources: resourcesCount,
+        });
+
+        // Create recent activities from conversations
+        if (conversationsResponse.success && conversationsResponse.data && conversationsResponse.data.length > 0) {
+          const activities: Activity[] = conversationsResponse.data.slice(0, 3).map((conv: any) => ({
+            type: conv.isGroup ? "forum" : "conversation",
+            title: conv.isGroup ? conv.name || "Group Chat" : "Private Conversation",
+            time: conv.lastMessage ? new Date(conv.lastMessage.createdAt).toLocaleDateString() : "Recent"
+          }));
+          setRecentActivities(activities);
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [authUser]);
 
   return (
     <Card className="w-full shadow-none border-none">

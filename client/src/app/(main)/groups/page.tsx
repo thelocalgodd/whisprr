@@ -6,54 +6,77 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BadgeCheck, Search, Send, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { groupApi, messageApi, type Group, type Message } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface User {
-  _id: string;
-  username: string;
-  role?: "user" | "counselor";
-  isVerified?: boolean;
-}
 
-interface Message {
-  _id: string;
-  sender: User;
-  text: string;
-  time: string;
-}
-
-interface Group {
-  _id: string;
-  name: string;
-  description: string;
-  members: number;
-  avatar: string;
-  messages: Message[];
-}
 
 export default function GroupsPage() {
-  const [groups] = useState<Group[]>([]);
+  const { user: authUser } = useAuth();
+  const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (selectedGroup) {
-      setMessages(selectedGroup.messages);
-    }
+    const fetchGroups = async () => {
+      try {
+        setLoading(true);
+        const response = await groupApi.getGroups();
+        if (response.success && response.data) {
+          setGroups(response.data.groups);
+        }
+      } catch (error) {
+        console.error("Failed to fetch groups:", error);
+        setError("Failed to load groups");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGroups();
+  }, []);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (selectedGroup) {
+        try {
+          const response = await messageApi.getMessages(selectedGroup._id);
+          if (response.success && response.data) {
+            setMessages(response.data.messages);
+          }
+        } catch (error) {
+          console.error("Failed to fetch messages:", error);
+        }
+      }
+    };
+
+    fetchMessages();
   }, [selectedGroup]);
 
   const handleSendMessage = async () => {
     if (selectedGroup && newMessage.trim()) {
-      const message: Message = {
-        _id: (messages.length + 1).toString(),
-        sender: { _id: "currentUser", username: "Me" },
-        text: newMessage.trim(),
-        time: new Date().toISOString(),
-      };
-      setMessages([...messages, message]);
-      setNewMessage("");
+      try {
+        const response = await messageApi.sendMessage({
+          conversationId: selectedGroup._id,
+          content: newMessage.trim(),
+          messageType: 'text'
+        });
+
+        if (response.success && response.data) {
+          // Refresh messages
+          const messagesResponse = await messageApi.getMessages(selectedGroup._id);
+          if (messagesResponse.success && messagesResponse.data) {
+            setMessages(messagesResponse.data.messages);
+          }
+        }
+        setNewMessage("");
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      }
     }
   };
 
@@ -122,9 +145,9 @@ export default function GroupsPage() {
                 </Avatar>
                 <div className="ml-4 flex-1">
                   <p className="font-semibold">{selectedGroup.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedGroup.members} members
-                  </p>
+                   <p className="text-sm text-muted-foreground">
+                     {selectedGroup.statistics.totalMembers} members
+                   </p>
                 </div>
               </div>
               <div className="flex-1 p-4 overflow-y-auto">
@@ -144,7 +167,7 @@ export default function GroupsPage() {
                           : "bg-muted"
                       }`}
                     >
-                      <p className="text-sm mb-1 w-full">{msg.text}</p>
+                       <p className="text-sm mb-1 w-full">{msg.content.text}</p>
                       <p
                         className={`text-xs ${
                           msg.sender.username === "Me"
@@ -170,11 +193,11 @@ export default function GroupsPage() {
                                 : "text-muted-foreground"
                             }`}
                           >
-                            {new Date(msg.time).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })}
+                             {new Date(msg.status.sentAt).toLocaleTimeString([], {
+                               hour: "2-digit",
+                               minute: "2-digit",
+                               hour12: true,
+                             })}
                           </span>
                         </span>
                       </p>

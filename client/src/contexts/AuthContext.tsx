@@ -24,7 +24,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAnonymous: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, role: string) => Promise<void>;
+  register: (username: string, email: string, password: string, fullName: string, role?: string) => Promise<void>;
   loginAnonymously: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -80,9 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (username: string, password: string, role: string) => {
+  const register = async (username: string, email: string, password: string, fullName: string, role: string = 'user') => {
     try {
-      const response = await RegisterService(username, password, role);
+      const response = await RegisterService(username, email, password, fullName, role);
       if (response.success) {
         setUser(response.user);
         localStorage.setItem("user", JSON.stringify(response.user));

@@ -20,7 +20,7 @@ interface User {
   username: string;
   fullName: string;
   email: string;
-  role: 'user' | 'counselor' | 'admin' | 'moderator';
+  role: "user" | "counselor" | "admin" | "moderator";
   isActive: boolean;
   isVerified: boolean;
   createdAt: string;
@@ -37,16 +37,16 @@ export default function UsersPage() {
       try {
         setLoading(true);
         const response = await userApi.getUsers({ limit: 50 });
-        
+
         if (response.success && response.data) {
           setUsers(response.data.users);
           setError(null);
         } else {
-          setError(response.error || 'Failed to fetch users');
+          setError(response.error || "Failed to fetch users");
         }
       } catch (err) {
-        setError('An error occurred while fetching users');
-        console.error('Users fetch error:', err);
+        setError("An error occurred while fetching users");
+        console.error("Users fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -59,12 +59,14 @@ export default function UsersPage() {
     try {
       const response = await userApi.updateUserStatus(userId, { isActive });
       if (response.success) {
-        setUsers(users.map(user => 
-          user._id === userId ? { ...user, isActive } : user
-        ));
+        setUsers(
+          users.map((user) =>
+            user._id === userId ? { ...user, isActive } : user
+          )
+        );
       }
     } catch (err) {
-      console.error('Update user status error:', err);
+      console.error("Update user status error:", err);
     }
   };
 
@@ -73,9 +75,7 @@ export default function UsersPage() {
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Users</h2>
-          <p className="text-sm text-muted-foreground">
-            Loading users...
-          </p>
+          <p className="text-sm text-muted-foreground">Loading users...</p>
         </div>
         <Card>
           <CardContent className="pt-6">
@@ -127,7 +127,6 @@ export default function UsersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Username</TableHead>
-                <TableHead>Full Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Verified</TableHead>
@@ -139,15 +138,22 @@ export default function UsersPage() {
               {users.map((user) => (
                 <TableRow key={user._id}>
                   <TableCell className="font-medium">{user.username}</TableCell>
-                  <TableCell>{user.fullName}</TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'admin' ? 'destructive' : user.role === 'counselor' ? 'default' : 'secondary'}>
+                    <Badge
+                      variant={
+                        user.role === "admin"
+                          ? "destructive"
+                          : user.role === "counselor"
+                            ? "default"
+                            : "secondary"
+                      }
+                    >
                       {user.role}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                      {user.isActive ? 'active' : 'inactive'}
+                    <Badge variant={user.isActive ? "default" : "secondary"}>
+                      {user.isActive ? "active" : "inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -158,18 +164,20 @@ export default function UsersPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {new Date(user.lastSeen).toLocaleDateString()}
+                    {new Date(user.lastSeen).toString()}
                   </TableCell>
                   <TableCell className="space-x-2">
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/users/${user._id}`}>View</Link>
                     </Button>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
-                      onClick={() => handleUpdateUserStatus(user._id, !user.isActive)}
+                      onClick={() =>
+                        handleUpdateUserStatus(user._id, !user.isActive)
+                      }
                     >
-                      {user.isActive ? 'Deactivate' : 'Activate'}
+                      {user.isActive ? "Deactivate" : "Activate"}
                     </Button>
                   </TableCell>
                 </TableRow>

@@ -12,51 +12,45 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Clock, FileText, User, Loader2 } from "lucide-react";
+import { AlertCircle, Clock, Loader2 } from "lucide-react";
 import { counselorApi } from "@/lib/api";
 
-interface CounselorApplication {
+interface Counselor {
   _id: string;
-  userId: {
-    _id: string;
-    username: string;
-    email: string;
-    fullName: string;
-    avatar?: string;
-  };
-  applicationData: {
-    firstName: string;
-    lastName: string;
-    education: Array<{
-      degree: string;
-      institution: string;
-      graduationYear: number;
-    }>;
+  username: string;
+  email: string;
+  counselorInfo: {
+    isVerified: boolean;
+    verificationStatus: "pending" | "approved" | "rejected";
+    verificationDocuments: string[];
     specializations: string[];
-    experience: Array<{
-      position: string;
-      organization: string;
-      yearsExperience?: number;
-    }>;
+    certifications: string[];
+    availabilityStatus: boolean;
+    rating: number;
+    totalSessions: number;
   };
-  status: string;
-  submittedAt: string;
-  completionPercentage?: number;
+  profile: {
+    displayName: string;
+    bio: string;
+    avatar: string;
+    pronouns: string;
+    timezone: string;
+    languages: string[];
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface ApplicationStats {
-  submitted: number;
-  underReview: number;
-  pendingDocuments: number;
-  approved: number;
-  rejected: number;
+interface PaginationInfo {
+  page: number;
+  limit: number;
   total: number;
-  lastMonthApplications: number;
+  pages: number;
 }
 
 export default function PendingCounselorsPage() {
-  const [applications, setApplications] = useState<CounselorApplication[]>([]);
-  const [stats, setStats] = useState<ApplicationStats | null>(null);
+  const [counselors, setCounselors] = useState<Counselor[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,25 +58,22 @@ export default function PendingCounselorsPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch applications and stats in parallel
-        const [applicationsResponse, statsResponse] = await Promise.all([
-          counselorApi.getPendingCounselors({ limit: 50, status: 'all' }),
-          counselorApi.getApplicationStats()
-        ]);
+        const response = await counselorApi.getPendingCounselors({ limit: 50 });
 
-        if (applicationsResponse?.data?.applications) {
-          setApplications(applicationsResponse.data.applications);
-        }
-
-        if (statsResponse?.data) {
-          setStats(statsResponse.data);
+        if (response?.success && response?.data) {
+          setCounselors(response.data.counselors || []);
+          setPagination(response.data.pagination || null);
+        } else if (response?.data) {
+          setCounselors(response.data.counselors || []);
+          setPagination(response.data.pagination || null);
         }
 
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch applications');
-        console.error('Applications fetch error:', err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch counselors"
+        );
+        console.error("Counselors fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -91,42 +82,65 @@ export default function PendingCounselorsPage() {
     fetchData();
   }, []);
 
-  const handleQuickApprove = async (applicationId: string) => {
+  const handleQuickApprove = async (counselorId: string) => {
     try {
-      await counselorApi.approveCounselor(applicationId, { approvalNotes: 'Quick approval from admin panel' });
-      
-      // Update local state
-      setApplications(applications.map(app => 
-        app._id === applicationId ? { ...app, status: 'approved' } : app
-      ));
+      await counselorApi.approveCounselor(counselorId, {
+        approvalNotes: "Quick approval from admin panel",
+      });
+
+      setCounselors(
+        counselors.map((counselor) =>
+          counselor._id === counselorId
+            ? {
+                ...counselor,
+                counselorInfo: {
+                  ...counselor.counselorInfo,
+                  verificationStatus: "approved",
+                },
+              }
+            : counselor
+        )
+      );
     } catch (err) {
-      console.error('Approve application error:', err);
+      console.error("Approve counselor error:", err);
     }
   };
 
-  const handleQuickReject = async (applicationId: string) => {
+  const handleQuickReject = async (counselorId: string) => {
     try {
-      await counselorApi.rejectCounselor(applicationId, { 
-        rejectionReason: 'other',
-        rejectionNotes: 'Rejected from admin panel' 
+      await counselorApi.rejectCounselor(counselorId, {
+        rejectionReason: "other",
+        rejectionNotes: "Rejected from admin panel",
       });
-      
-      // Update local state
-      setApplications(applications.map(app => 
-        app._id === applicationId ? { ...app, status: 'rejected' } : app
-      ));
+
+      setCounselors(
+        counselors.map((counselor) =>
+          counselor._id === counselorId
+            ? {
+                ...counselor,
+                counselorInfo: {
+                  ...counselor.counselorInfo,
+                  verificationStatus: "rejected",
+                },
+              }
+            : counselor
+        )
+      );
     } catch (err) {
-      console.error('Reject application error:', err);
+      console.error("Reject counselor error:", err);
     }
   };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'approved': return 'default';
-      case 'rejected': return 'destructive';
-      case 'under_review': return 'secondary';
-      case 'pending_documents': return 'outline';
-      default: return 'outline';
+      case "approved":
+        return "default";
+      case "rejected":
+        return "destructive";
+      case "pending":
+        return "secondary";
+      default:
+        return "outline";
     }
   };
 
@@ -134,9 +148,11 @@ export default function PendingCounselorsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Pending Counselors</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Pending Counselors
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Loading applications...
+            Loading counselor applications...
           </p>
         </div>
         <Card>
@@ -144,7 +160,9 @@ export default function PendingCounselorsPage() {
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                <p className="text-sm text-muted-foreground">Loading applications...</p>
+                <p className="text-sm text-muted-foreground">
+                  Loading applications...
+                </p>
               </div>
             </div>
           </CardContent>
@@ -157,7 +175,9 @@ export default function PendingCounselorsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Pending Counselors</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Pending Counselors
+          </h2>
           <p className="text-sm text-muted-foreground">
             Review and approve counselor applications.
           </p>
@@ -177,147 +197,129 @@ export default function PendingCounselorsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Pending Counselors</h2>
+        <h2 className="text-3xl font-bold tracking-tight">
+          Pending Counselors
+        </h2>
         <p className="text-sm text-muted-foreground">
           Review and approve counselor applications.
         </p>
       </div>
 
-      {/* Statistics Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-orange-500" />
-                <div>
-                  <p className="text-sm font-medium">New Applications</p>
-                  <p className="text-2xl font-bold">{stats.submitted}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4 text-blue-500" />
-                <div>
-                  <p className="text-sm font-medium">Under Review</p>
-                  <p className="text-2xl font-bold">{stats.underReview}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-green-500" />
-                <div>
-                  <p className="text-sm font-medium">Approved</p>
-                  <p className="text-2xl font-bold">{stats.approved}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-red-500" />
-                <div>
-                  <p className="text-sm font-medium">Rejected</p>
-                  <p className="text-2xl font-bold">{stats.rejected}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       <Card>
         <CardHeader>
-          <CardTitle>Applications ({applications.length})</CardTitle>
+          <CardTitle>Applications ({counselors.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Applicant</TableHead>
+                <TableHead>Counselor</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Applied</TableHead>
-                <TableHead>Education</TableHead>
                 <TableHead>Specializations</TableHead>
+                <TableHead>Languages</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {applications.map((app) => (
-                <TableRow key={app._id}>
+              {counselors.map((counselor) => (
+                <TableRow key={counselor._id}>
                   <TableCell>
                     <div className="font-medium">
-                      {app.applicationData?.firstName} {app.applicationData?.lastName}
+                      {counselor.profile.displayName}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      @{app.userId.username}
+                      @{counselor.username}
                     </div>
                   </TableCell>
-                  <TableCell>{app.userId.email}</TableCell>
+                  <TableCell>{counselor.email}</TableCell>
                   <TableCell className="text-sm">
-                    {new Date(app.submittedAt).toLocaleDateString()}
+                    {new Date(counselor.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {app.applicationData?.education?.[0] ? (
-                      <div>
-                        <div className="font-medium">{app.applicationData.education[0].degree}</div>
-                        <div className="text-muted-foreground">{app.applicationData.education[0].institution}</div>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">Not specified</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {app.applicationData?.specializations?.length > 0 ? (
+                    {counselor.counselorInfo.specializations?.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {app.applicationData.specializations.slice(0, 2).map((spec, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {spec.replace('_', ' ')}
-                          </Badge>
-                        ))}
-                        {app.applicationData.specializations.length > 2 && (
+                        {counselor.counselorInfo.specializations
+                          .slice(0, 2)
+                          .map((spec, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {spec}
+                            </Badge>
+                          ))}
+                        {counselor.counselorInfo.specializations.length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{app.applicationData.specializations.length - 2}
+                            +
+                            {counselor.counselorInfo.specializations.length - 2}
                           </Badge>
                         )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">Not specified</span>
+                      <span className="text-muted-foreground">
+                        Not specified
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {counselor.profile.languages?.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {counselor.profile.languages
+                          .slice(0, 2)
+                          .map((lang, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {lang}
+                            </Badge>
+                          ))}
+                        {counselor.profile.languages.length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{counselor.profile.languages.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Not specified
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStatusVariant(app.status)}>
-                      {app.status.replace("_", " ")}
+                    <Badge
+                      variant={getStatusVariant(
+                        counselor.counselorInfo.verificationStatus
+                      )}
+                    >
+                      {counselor.counselorInfo.verificationStatus}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/counselors/pending/${app._id}`}>
+                        <Link href={`/counselors/pending/${counselor._id}`}>
                           Review
                         </Link>
                       </Button>
-                      {(app.status === "submitted" || app.status === "under_review") && (
+                      {counselor.counselorInfo.verificationStatus ===
+                        "pending" && (
                         <>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleQuickApprove(app._id)}
+                          <Button
+                            size="sm"
+                            onClick={() => handleQuickApprove(counselor._id)}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             Approve
                           </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={() => handleQuickReject(app._id)}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleQuickReject(counselor._id)}
                           >
                             Reject
                           </Button>
@@ -327,10 +329,13 @@ export default function PendingCounselorsPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {applications.length === 0 && (
+              {counselors.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No pending applications found
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    No pending counselor applications found
                   </TableCell>
                 </TableRow>
               )}

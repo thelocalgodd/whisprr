@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardDescription,
@@ -18,6 +18,7 @@ import {
   VolumeX,
   ToolCaseIcon,
 } from "lucide-react";
+import { resourceApi, type Resource } from "@/lib/api";
 
 const ResourceIcon = ({ type }: { type: Resource["type"] }) => {
   switch (type) {
@@ -38,22 +39,29 @@ const ResourceIcon = ({ type }: { type: Resource["type"] }) => {
   }
 };
 
-interface Resource {
-  _id: string;
-  title: string;
-  description: string;
-  type: "article" | "video" | "audio" | "pdf" | "link" | "tool";
-  url: string;
-  category: string;
-  views: number;
-  likesCount: number;
-  createdBy: {
-    username: string;
-  };
-}
+
 
 const ResourcesPage = () => {
-  const [resources] = useState<Resource[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        setLoading(true);
+        const response = await resourceApi.getResources();
+        if (response.success && response.data) {
+          setResources(response.data.resources);
+        }
+      } catch (error) {
+        console.error("Failed to fetch resources:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResources();
+  }, []);
 
   const handleView = (resource: Resource) => {
     window.open(resource.url, "_blank");
@@ -91,10 +99,10 @@ const ResourcesPage = () => {
                   {resource.description}
                 </CardDescription>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
-                  <span>{resource.views} views</span>
+                  <span>{resource.metadata.views} views</span>
                   <span>By {resource.createdBy.username}</span>
-                  {resource.likesCount > 0 && (
-                    <span>{resource.likesCount} likes</span>
+                  {resource.metadata.likes > 0 && (
+                    <span>{resource.metadata.likes} likes</span>
                   )}
                 </div>
               </CardHeader>

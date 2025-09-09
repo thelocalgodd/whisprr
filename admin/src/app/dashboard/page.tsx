@@ -330,15 +330,17 @@ export default function Dashboard() {
           <CardContent className="h-64">
             {analytics.topGroups.length > 0 ? (
               <div className="space-y-2">
-                {analytics.topGroups.map((group: any, index: number) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center"
-                  >
-                    <span className="text-sm">{group.name}</span>
-                    <Badge>{group.members} members</Badge>
-                  </div>
-                ))}
+                {analytics.topGroups
+                  .slice(0, 8)
+                  .map((group: any, index: number) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center"
+                    >
+                      <span className="text-sm">{group.name}</span>
+                      <Badge>{group.statistics.totalMembers} members</Badge>
+                    </div>
+                  ))}
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">

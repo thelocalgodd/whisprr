@@ -1,38 +1,40 @@
-const Message = require('../models/Message');
-const Group = require('../models/Group');
-const User = require('../models/User');
-const Session = require('../models/Session');
-const { body, validationResult } = require('express-validator');
-const multer = require('multer');
-const path = require('path');
-const crypto = require('crypto');
+const Message = require("../models/Message");
+const Group = require("../models/Group");
+const User = require("../models/User");
+const Session = require("../models/Session");
+const { body, validationResult } = require("express-validator");
+const multer = require("multer");
+const path = require("path");
+const crypto = require("crypto");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads/messages');
+    const uploadPath = path.join(__dirname, "../../uploads/messages");
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(null, `msg-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
+  },
 });
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024
+    fileSize: 50 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|mp4|mp3|wav|pdf|doc|docx|txt/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+
     if (extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Invalid file type'));
+      cb(new Error("Invalid file type"));
     }
-  }
+  },
 });
 
 const sendMessage = async (req, res) => {
@@ -42,15 +44,23 @@ const sendMessage = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { recipient, group, content, replyTo, messageType = 'text' } = req.body;
+    const {
+      recipient,
+      group,
+      content,
+      replyTo,
+      messageType = "text",
+    } = req.body;
     const sender = req.user._id;
 
     if (!recipient && !group) {
-      return res.status(400).json({ error: 'Recipient or group required' });
+      return res.status(400).json({ error: "Recipient or group required" });
     }
 
     if (recipient && group) {
-      return res.status(400).json({ error: 'Cannot send to both recipient and group' });
+      return res
+        .status(400)
+        .json({ error: "Cannot send to both recipient and group" });
     }
 
     let conversationId;
@@ -60,40 +70,57 @@ const sendMessage = async (req, res) => {
     if (recipient) {
       targetUser = await User.findById(recipient);
       if (!targetUser || !targetUser.isActive) {
-        return res.status(404).json({ error: 'Recipient not found' });
+        return res.status(404).json({ error: "Recipient not found" });
       }
 
       if (targetUser.privacy.blockList.includes(sender)) {
-        return res.status(403).json({ error: 'You are blocked by this user' });
+        return res.status(403).json({ error: "You are blocked by this user" });
       }
 
       if (req.user.privacy.blockList.includes(recipient)) {
-        return res.status(403).json({ error: 'You have blocked this user' });
+        return res.status(403).json({ error: "You have blocked this user" });
       }
 
-      if (!targetUser.privacy.allowDirectMessages && 
-          targetUser.role !== 'counselor' && req.user.role !== 'counselor') {
-        return res.status(403).json({ error: 'User does not allow direct messages' });
+      if (
+        !targetUser.privacy.allowDirectMessages &&
+        targetUser.role !== "counselor" &&
+        req.user.role !== "counselor"
+      ) {
+        return res
+          .status(403)
+          .json({ error: "User does not allow direct messages" });
       }
 
-      conversationId = [sender.toString(), recipient.toString()].sort().join('-');
+      conversationId = [sender.toString(), recipient.toString()]
+        .sort()
+        .join("-");
     } else {
       targetGroup = await Group.findById(group);
       if (!targetGroup || !targetGroup.isActive) {
-        return res.status(404).json({ error: 'Group not found' });
+        return res.status(404).json({ error: "Group not found" });
       }
 
       if (!targetGroup.isMember(sender)) {
-        return res.status(403).json({ error: 'You are not a member of this group' });
+        return res
+          .status(403)
+          .json({ error: "You are not a member of this group" });
       }
 
       if (targetGroup.isUserBanned(sender)) {
-        return res.status(403).json({ error: 'You are banned from this group' });
+        return res
+          .status(403)
+          .json({ error: "You are banned from this group" });
       }
 
-      const memberInfo = targetGroup.members.find(m => m.user.toString() === sender.toString());
-      if (memberInfo && memberInfo.isMuted && (!memberInfo.mutedUntil || memberInfo.mutedUntil > new Date())) {
-        return res.status(403).json({ error: 'You are muted in this group' });
+      const memberInfo = targetGroup.members.find(
+        (m) => m.user.toString() === sender.toString()
+      );
+      if (
+        memberInfo &&
+        memberInfo.isMuted &&
+        (!memberInfo.mutedUntil || memberInfo.mutedUntil > new Date())
+      ) {
+        return res.status(403).json({ error: "You are muted in this group" });
       }
 
       conversationId = group.toString();
@@ -106,11 +133,11 @@ const sendMessage = async (req, res) => {
       conversationId,
       messageType,
       content: {
-        text: content.text || ''
+        text: content.text || "",
       },
       metadata: {
-        replyTo: replyTo || undefined
-      }
+        replyTo: replyTo || undefined,
+      },
     };
 
     if (req.file) {
@@ -123,7 +150,10 @@ const sendMessage = async (req, res) => {
 
     const message = new Message(messageData);
 
-    const crisisKeywords = (process.env.CRISIS_KEYWORDS || 'suicide,kill myself,end it all,harm myself,self-harm').split(',');
+    const crisisKeywords = (
+      process.env.CRISIS_KEYWORDS ||
+      "suicide,kill myself,end it all,harm myself,self-harm"
+    ).split(",");
     const detectedKeywords = message.checkForCrisisKeywords(crisisKeywords);
 
     await message.save();
@@ -136,24 +166,24 @@ const sendMessage = async (req, res) => {
 
     await User.updateOne(
       { _id: sender },
-      { $inc: { 'statistics.totalMessages': 1 } }
+      { $inc: { "statistics.totalMessages": 1 } }
     );
 
     const populatedMessage = await Message.findById(message._id)
-      .populate('sender', 'username profile role')
-      .populate('recipient', 'username profile role')
-      .populate('group', 'name type')
-      .populate('metadata.replyTo', 'sender content.text createdAt');
+      .populate("sender", "username profile role")
+      .populate("recipient", "username profile role")
+      .populate("group", "name type")
+      .populate("metadata.replyTo", "sender content.text createdAt");
 
     res.status(201).json({
-      message: 'Message sent successfully',
+      message: "Message sent successfully",
       data: populatedMessage,
       crisisDetected: detectedKeywords.length > 0,
-      detectedKeywords
+      detectedKeywords,
     });
   } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ error: 'Failed to send message' });
+    console.error("Send message error:", error);
+    res.status(500).json({ error: "Failed to send message" });
   }
 };
 
@@ -165,7 +195,7 @@ const getMessages = async (req, res) => {
 
     const filter = {
       conversationId,
-      isDeleted: false
+      isDeleted: false,
     };
 
     if (before) {
@@ -176,23 +206,28 @@ const getMessages = async (req, res) => {
       filter.createdAt = { ...filter.createdAt, $gt: new Date(after) };
     }
 
-    const isGroupConversation = !conversationId.includes('-');
-    
+    const isGroupConversation = !conversationId.includes("-");
+
     if (!isGroupConversation) {
-      const [user1, user2] = conversationId.split('-');
-      if (user1 !== req.user._id.toString() && user2 !== req.user._id.toString()) {
-        return res.status(403).json({ error: 'Access denied to this conversation' });
+      const [user1, user2] = conversationId.split("-");
+      if (
+        user1 !== req.user._id.toString() &&
+        user2 !== req.user._id.toString()
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Access denied to this conversation" });
       }
     } else {
       const group = await Group.findById(conversationId);
       if (!group || !group.isMember(req.user._id)) {
-        return res.status(403).json({ error: 'Access denied to this group' });
+        return res.status(403).json({ error: "Access denied to this group" });
       }
     }
 
     const messages = await Message.find(filter)
-      .populate('sender', 'username profile role counselorInfo.isVerified')
-      .populate('metadata.replyTo', 'sender content.text createdAt')
+      .populate("sender", "username profile role counselorInfo.isVerified")
+      .populate("metadata.replyTo", "sender content.text createdAt")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -203,11 +238,11 @@ const getMessages = async (req, res) => {
       {
         conversationId,
         recipient: req.user._id,
-        'status.read': false
+        "status.read": false,
       },
       {
-        'status.read': true,
-        'status.readAt': new Date()
+        "status.read": true,
+        "status.readAt": new Date(),
       }
     );
 
@@ -217,12 +252,12 @@ const getMessages = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
-    console.error('Get messages error:', error);
-    res.status(500).json({ error: 'Failed to get messages' });
+    console.error("Get messages error:", error);
+    res.status(500).json({ error: "Failed to get messages" });
   }
 };
 
@@ -234,19 +269,23 @@ const editMessage = async (req, res) => {
     const message = await Message.findById(messageId);
 
     if (!message) {
-      return res.status(404).json({ error: 'Message not found' });
+      return res.status(404).json({ error: "Message not found" });
     }
 
     if (message.sender.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: 'You can only edit your own messages' });
+      return res
+        .status(403)
+        .json({ error: "You can only edit your own messages" });
     }
 
     if (message.createdAt < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
-      return res.status(403).json({ error: 'Messages can only be edited within 24 hours' });
+      return res
+        .status(403)
+        .json({ error: "Messages can only be edited within 24 hours" });
     }
 
     if (message.metadata.edited && message.metadata.editHistory.length >= 5) {
-      return res.status(403).json({ error: 'Maximum edit limit reached' });
+      return res.status(403).json({ error: "Maximum edit limit reached" });
     }
 
     if (!message.metadata.editHistory) {
@@ -255,7 +294,7 @@ const editMessage = async (req, res) => {
 
     message.metadata.editHistory.push({
       content: message.decrypt(),
-      editedAt: new Date()
+      editedAt: new Date(),
     });
 
     message.content.text = text;
@@ -265,16 +304,18 @@ const editMessage = async (req, res) => {
 
     await message.save();
 
-    const populatedMessage = await Message.findById(message._id)
-      .populate('sender', 'username profile role');
+    const populatedMessage = await Message.findById(message._id).populate(
+      "sender",
+      "username profile role"
+    );
 
     res.json({
-      message: 'Message edited successfully',
-      data: populatedMessage
+      message: "Message edited successfully",
+      data: populatedMessage,
     });
   } catch (error) {
-    console.error('Edit message error:', error);
-    res.status(500).json({ error: 'Failed to edit message' });
+    console.error("Edit message error:", error);
+    res.status(500).json({ error: "Failed to edit message" });
   }
 };
 
@@ -286,34 +327,40 @@ const deleteMessage = async (req, res) => {
     const message = await Message.findById(messageId);
 
     if (!message) {
-      return res.status(404).json({ error: 'Message not found' });
+      return res.status(404).json({ error: "Message not found" });
     }
 
     if (message.sender.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: 'You can only delete your own messages' });
+      return res
+        .status(403)
+        .json({ error: "You can only delete your own messages" });
     }
 
     if (deleteForEveryone) {
       if (message.createdAt < new Date(Date.now() - 60 * 60 * 1000)) {
-        return res.status(403).json({ error: 'Messages can only be deleted for everyone within 1 hour' });
+        return res
+          .status(403)
+          .json({
+            error: "Messages can only be deleted for everyone within 1 hour",
+          });
       }
-      
+
       message.isDeleted = true;
       message.deletedBy = req.user._id;
       message.deletedAt = new Date();
-      message.content.text = 'This message was deleted';
+      message.content.text = "This message was deleted";
       message.content.encryptedText = undefined;
     } else {
       await Message.deleteOne({ _id: messageId });
-      return res.json({ message: 'Message deleted successfully' });
+      return res.json({ message: "Message deleted successfully" });
     }
 
     await message.save();
 
-    res.json({ message: 'Message deleted for everyone' });
+    res.json({ message: "Message deleted for everyone" });
   } catch (error) {
-    console.error('Delete message error:', error);
-    res.status(500).json({ error: 'Failed to delete message' });
+    console.error("Delete message error:", error);
+    res.status(500).json({ error: "Failed to delete message" });
   }
 };
 
@@ -325,17 +372,17 @@ const reactToMessage = async (req, res) => {
     const message = await Message.findById(messageId);
 
     if (!message) {
-      return res.status(404).json({ error: 'Message not found' });
+      return res.status(404).json({ error: "Message not found" });
     }
 
     const existingReaction = message.reactions.find(
-      r => r.user.toString() === req.user._id.toString()
+      (r) => r.user.toString() === req.user._id.toString()
     );
 
     if (existingReaction) {
       if (existingReaction.emoji === emoji) {
         message.reactions = message.reactions.filter(
-          r => r.user.toString() !== req.user._id.toString()
+          (r) => r.user.toString() !== req.user._id.toString()
         );
       } else {
         existingReaction.emoji = emoji;
@@ -345,19 +392,19 @@ const reactToMessage = async (req, res) => {
       message.reactions.push({
         user: req.user._id,
         emoji,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
 
     await message.save();
 
     res.json({
-      message: 'Reaction updated successfully',
-      reactions: message.reactions
+      message: "Reaction updated successfully",
+      reactions: message.reactions,
     });
   } catch (error) {
-    console.error('React to message error:', error);
-    res.status(500).json({ error: 'Failed to react to message' });
+    console.error("React to message error:", error);
+    res.status(500).json({ error: "Failed to react to message" });
   }
 };
 
@@ -369,44 +416,54 @@ const reportMessage = async (req, res) => {
     const message = await Message.findById(messageId);
 
     if (!message) {
-      return res.status(404).json({ error: 'Message not found' });
+      return res.status(404).json({ error: "Message not found" });
     }
 
     if (message.sender.toString() === req.user._id.toString()) {
-      return res.status(400).json({ error: 'Cannot report your own message' });
+      return res.status(400).json({ error: "Cannot report your own message" });
     }
 
     const existingReport = message.reports.find(
-      r => r.reportedBy.toString() === req.user._id.toString()
+      (r) => r.reportedBy.toString() === req.user._id.toString()
     );
 
     if (existingReport) {
-      return res.status(400).json({ error: 'You have already reported this message' });
+      return res
+        .status(400)
+        .json({ error: "You have already reported this message" });
     }
 
     message.reports.push({
       reportedBy: req.user._id,
       reason,
       description,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     await message.save();
 
-    res.json({ message: 'Message reported successfully' });
+    res.json({ message: "Message reported successfully" });
   } catch (error) {
-    console.error('Report message error:', error);
-    res.status(500).json({ error: 'Failed to report message' });
+    console.error("Report message error:", error);
+    res.status(500).json({ error: "Failed to report message" });
   }
 };
 
 const searchMessages = async (req, res) => {
   try {
-    const { query, conversationId, messageType, dateFrom, dateTo, page = 1, limit = 20 } = req.query;
+    const {
+      query,
+      conversationId,
+      messageType,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 20,
+    } = req.query;
     const skip = (page - 1) * limit;
 
     const filter = {
-      isDeleted: false
+      isDeleted: false,
     };
 
     if (query) {
@@ -415,24 +472,29 @@ const searchMessages = async (req, res) => {
 
     if (conversationId) {
       filter.conversationId = conversationId;
-      
-      const isGroupConversation = !conversationId.includes('-');
+
+      const isGroupConversation = !conversationId.includes("-");
       if (!isGroupConversation) {
-        const [user1, user2] = conversationId.split('-');
-        if (user1 !== req.user._id.toString() && user2 !== req.user._id.toString()) {
-          return res.status(403).json({ error: 'Access denied to this conversation' });
+        const [user1, user2] = conversationId.split("-");
+        if (
+          user1 !== req.user._id.toString() &&
+          user2 !== req.user._id.toString()
+        ) {
+          return res
+            .status(403)
+            .json({ error: "Access denied to this conversation" });
         }
       } else {
         const group = await Group.findById(conversationId);
         if (!group || !group.isMember(req.user._id)) {
-          return res.status(403).json({ error: 'Access denied to this group' });
+          return res.status(403).json({ error: "Access denied to this group" });
         }
       }
     } else {
       filter.$or = [
         { sender: req.user._id },
         { recipient: req.user._id },
-        { group: { $in: await getUserGroupIds(req.user._id) } }
+        { group: { $in: await getUserGroupIds(req.user._id) } },
       ];
     }
 
@@ -447,9 +509,9 @@ const searchMessages = async (req, res) => {
     }
 
     const messages = await Message.find(filter)
-      .populate('sender', 'username profile role')
-      .populate('recipient', 'username profile role')
-      .populate('group', 'name type')
+      .populate("sender", "username profile role")
+      .populate("recipient", "username profile role")
+      .populate("group", "name type")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -462,95 +524,97 @@ const searchMessages = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
-    console.error('Search messages error:', error);
-    res.status(500).json({ error: 'Failed to search messages' });
+    console.error("Search messages error:", error);
+    res.status(500).json({ error: "Failed to search messages" });
   }
 };
 
 const getConversations = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user?._id;
     const { page = 1, limit = 20, type } = req.query;
     const skip = (page - 1) * limit;
 
     let conversations = [];
 
-    if (!type || type === 'private') {
+    if (!type || type === "private") {
       const privateMessages = await Message.aggregate([
         {
           $match: {
             $or: [{ sender: userId }, { recipient: userId }],
             group: { $exists: false },
-            isDeleted: false
-          }
+            isDeleted: false,
+          },
         },
         {
-          $sort: { createdAt: -1 }
+          $sort: { createdAt: -1 },
         },
         {
           $group: {
-            _id: '$conversationId',
-            lastMessage: { $first: '$$ROOT' },
+            _id: "$conversationId",
+            lastMessage: { $first: "$$ROOT" },
             unreadCount: {
               $sum: {
                 $cond: [
                   {
                     $and: [
-                      { $eq: ['$recipient', userId] },
-                      { $eq: ['$status.read', false] }
-                    ]
+                      { $eq: ["$recipient", userId] },
+                      { $eq: ["$status.read", false] },
+                    ],
                   },
                   1,
-                  0
-                ]
-              }
-            }
-          }
+                  0,
+                ],
+              },
+            },
+          },
         },
         {
           $lookup: {
-            from: 'users',
-            localField: 'lastMessage.sender',
-            foreignField: '_id',
-            as: 'sender'
-          }
+            from: "users",
+            localField: "lastMessage.sender",
+            foreignField: "_id",
+            as: "sender",
+          },
         },
         {
           $lookup: {
-            from: 'users',
-            localField: 'lastMessage.recipient',
-            foreignField: '_id',
-            as: 'recipient'
-          }
+            from: "users",
+            localField: "lastMessage.recipient",
+            foreignField: "_id",
+            as: "recipient",
+          },
         },
         {
-          $sort: { 'lastMessage.createdAt': -1 }
+          $sort: { "lastMessage.createdAt": -1 },
         },
         {
-          $skip: skip
+          $skip: skip,
         },
         {
-          $limit: parseInt(limit)
-        }
+          $limit: parseInt(limit),
+        },
       ]);
 
-      conversations.push(...privateMessages.map(conv => ({
-        ...conv,
-        type: 'private'
-      })));
+      conversations.push(
+        ...privateMessages.map((conv) => ({
+          ...conv,
+          type: "private",
+        }))
+      );
     }
 
-    if (!type || type === 'group') {
+    if (!type || type === "group") {
       const userGroups = await Group.find({
-        'members.user': userId,
-        isActive: true
+        "members.user": userId,
+        isActive: true,
       })
-        .populate('members.user', 'username profile')
-        .sort({ 'statistics.lastActivity': -1 })
+        .populate("members.user", "username profile")
+        .sort({ "statistics.lastActivity": -1 })
         .skip(skip)
         .limit(parseInt(limit));
 
@@ -558,24 +622,24 @@ const getConversations = async (req, res) => {
         userGroups.map(async (group) => {
           const lastMessage = await Message.findOne({
             group: group._id,
-            isDeleted: false
+            isDeleted: false,
           })
-            .populate('sender', 'username profile role')
+            .populate("sender", "username profile role")
             .sort({ createdAt: -1 });
 
           const unreadCount = await Message.countDocuments({
             group: group._id,
             recipient: userId,
-            'status.read': false,
-            isDeleted: false
+            "status.read": false,
+            isDeleted: false,
           });
 
           return {
             _id: group._id.toString(),
-            type: 'group',
+            type: "group",
             group,
             lastMessage,
-            unreadCount
+            unreadCount,
           };
         })
       );
@@ -585,8 +649,12 @@ const getConversations = async (req, res) => {
 
     conversations = conversations
       .sort((a, b) => {
-        const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt) : new Date(0);
-        const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt) : new Date(0);
+        const aTime = a.lastMessage
+          ? new Date(a.lastMessage.createdAt)
+          : new Date(0);
+        const bTime = b.lastMessage
+          ? new Date(b.lastMessage.createdAt)
+          : new Date(0);
         return bTime - aTime;
       })
       .slice(0, parseInt(limit));
@@ -596,40 +664,34 @@ const getConversations = async (req, res) => {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: conversations.length
-      }
+        total: conversations.length,
+      },
     });
   } catch (error) {
-    console.error('Get conversations error:', error);
-    res.status(500).json({ error: 'Failed to get conversations' });
+    console.error("Get conversations error:", error);
+    res.status(500).json({ error: "Failed to get conversations" });
   }
 };
 
 const getMessageType = (mimeType) => {
-  if (mimeType.startsWith('image/')) return 'image';
-  if (mimeType.startsWith('video/')) return 'video';
-  if (mimeType.startsWith('audio/')) return 'audio';
-  return 'file';
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "file";
 };
 
 const getUserGroupIds = async (userId) => {
-  const groups = await Group.find({ 'members.user': userId }, '_id');
-  return groups.map(g => g._id);
+  const groups = await Group.find({ "members.user": userId }, "_id");
+  return groups.map((g) => g._id);
 };
 
 const messageValidation = [
-  body('content.text')
+  body("content.text")
     .optional()
     .isLength({ max: 4000 })
-    .withMessage('Message too long (max 4000 characters)'),
-  body('recipient')
-    .optional()
-    .isMongoId()
-    .withMessage('Invalid recipient ID'),
-  body('group')
-    .optional()
-    .isMongoId()
-    .withMessage('Invalid group ID')
+    .withMessage("Message too long (max 4000 characters)"),
+  body("recipient").optional().isMongoId().withMessage("Invalid recipient ID"),
+  body("group").optional().isMongoId().withMessage("Invalid group ID"),
 ];
 
 module.exports = {
@@ -642,5 +704,5 @@ module.exports = {
   searchMessages,
   getConversations,
   upload,
-  messageValidation
+  messageValidation,
 };

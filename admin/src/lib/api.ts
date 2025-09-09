@@ -59,7 +59,7 @@ export const userApi = {
 };
 
 export const reportApi = {
-  getReports: (params = {}) => handleApiResponse(() => api.get(`/reports?${createQueryString(params)}`)),
+  getReports: (params = {}) => handleApiResponse(() => api.get(`/moderation/flagged?${createQueryString(params)}`)),
   getReportById: (reportId: string) => handleApiResponse(() => api.get(`/reports/${reportId}`)),
   reviewReport: (reportId: string, data: { status: string; reviewNotes?: string }) =>
     handleApiResponse(() => api.post(`/reports/${reportId}/review`, data)),
