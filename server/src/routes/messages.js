@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -11,54 +11,26 @@ const {
   searchMessages,
   getConversations,
   upload,
-  messageValidation
-} = require('../controllers/messageController');
-
-const { authenticate } = require('../middleware/auth');
-const { rateLimiters } = require('../middleware/security');
-
-router.post('/',
-  authenticate,
-  rateLimiters.message,
-  upload.single('attachment'),
   messageValidation,
-  sendMessage
-);
+} = require("../controllers/messageController");
 
-router.get('/conversations',
-  authenticate,
-  getConversations
-);
+const { authenticate } = require("../middleware/auth");
+const { rateLimiters } = require("../middleware/security");
 
-router.get('/search',
-  authenticate,
-  rateLimiters.search,
-  searchMessages
-);
+router.post("/", upload.single("attachment"), sendMessage);
 
-router.get('/:conversationId',
-  authenticate,
-  getMessages
-);
+router.get("/conversations", getConversations);
 
-router.put('/:messageId',
-  authenticate,
-  editMessage
-);
+router.get("/search", searchMessages);
 
-router.delete('/:messageId',
-  authenticate,
-  deleteMessage
-);
+router.get("/:conversationId", getMessages);
 
-router.post('/:messageId/react',
-  authenticate,
-  reactToMessage
-);
+router.put("/:messageId", editMessage);
 
-router.post('/:messageId/report',
-  authenticate,
-  reportMessage
-);
+router.delete("/:messageId", deleteMessage);
+
+router.post("/:messageId/react", reactToMessage);
+
+router.post("/:messageId/report", reportMessage);
 
 module.exports = router;

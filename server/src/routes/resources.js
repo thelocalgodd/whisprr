@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -15,74 +15,32 @@ const {
   getPendingResources,
   upload,
   createResourceValidation,
-  ratingValidation
-} = require('../controllers/resourceController');
-
-const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
-const { rateLimiters } = require('../middleware/security');
-
-router.post('/',
-  authenticate,
-  authorize('counselor', 'admin'),
-  rateLimiters.upload,
-  upload.single('file'),
-  createResourceValidation,
-  createResource
-);
-
-router.get('/',
-  optionalAuth,
-  rateLimiters.search,
-  getResources
-);
-
-router.get('/my-bookmarks',
-  authenticate,
-  getMyBookmarks
-);
-
-router.get('/pending',
-  authenticate,
-  authorize('admin'),
-  getPendingResources
-);
-
-router.get('/:resourceId',
-  optionalAuth,
-  getResource
-);
-
-router.put('/:resourceId',
-  authenticate,
-  updateResource
-);
-
-router.delete('/:resourceId',
-  authenticate,
-  deleteResource
-);
-
-router.post('/:resourceId/rate',
-  authenticate,
   ratingValidation,
-  rateResource
-);
+} = require("../controllers/resourceController");
 
-router.post('/:resourceId/bookmark',
-  authenticate,
-  bookmarkResource
-);
+const { authenticate, authorize, optionalAuth } = require("../middleware/auth");
+const { rateLimiters } = require("../middleware/security");
 
-router.post('/:resourceId/approve',
-  authenticate,
-  authorize('admin'),
-  approveResource
-);
+router.post("/", upload.single("file"), createResource);
 
-router.post('/:resourceId/reject',
-  authenticate,
-  authorize('admin'),
-  rejectResource
-);
+router.get("/", getResources);
+
+router.get("/my-bookmarks", getMyBookmarks);
+
+router.get("/pending", getPendingResources);
+
+router.get("/:resourceId", getResource);
+
+router.put("/:resourceId", updateResource);
+
+router.delete("/:resourceId", deleteResource);
+
+router.post("/:resourceId/rate", rateResource);
+
+router.post("/:resourceId/bookmark", bookmarkResource);
+
+router.post("/:resourceId/approve", approveResource);
+
+router.post("/:resourceId/reject", rejectResource);
 
 module.exports = router;

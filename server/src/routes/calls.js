@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -12,59 +12,34 @@ const {
   submitCallFeedback,
   getCounselorStats,
   callValidation,
-  feedbackValidation
-} = require('../controllers/callController');
+  feedbackValidation,
+} = require("../controllers/callController");
 
-const { authenticate, authorize } = require('../middleware/auth');
-const { rateLimiters } = require('../middleware/security');
+const { authenticate, authorize } = require("../middleware/auth");
+const { rateLimiters } = require("../middleware/security");
 
-router.post('/initiate',
+router.post(
+  "/initiate",
   authenticate,
   rateLimiters.call,
   callValidation,
   initiateCall
 );
 
-router.post('/:callId/join',
-  authenticate,
-  joinCall
-);
+router.post("/:callId/join", joinCall);
 
-router.post('/:callId/leave',
-  authenticate,
-  leaveCall
-);
+router.post("/:callId/leave", leaveCall);
 
-router.post('/:callId/end',
-  authenticate,
-  endCall
-);
+router.post("/:callId/end", endCall);
 
-router.put('/:callId/settings',
-  authenticate,
-  updateCallSettings
-);
+router.put("/:callId/settings", updateCallSettings);
 
-router.get('/history',
-  authenticate,
-  getCallHistory
-);
+router.get("/history", getCallHistory);
 
-router.get('/active',
-  authenticate,
-  getActiveCall
-);
+router.get("/active", getActiveCall);
 
-router.post('/:callId/feedback',
-  authenticate,
-  feedbackValidation,
-  submitCallFeedback
-);
+router.post("/:callId/feedback", submitCallFeedback);
 
-router.get('/counselor-stats',
-  authenticate,
-  authorize('counselor', 'admin'),
-  getCounselorStats
-);
+router.get("/counselor-stats", getCounselorStats);
 
 module.exports = router;

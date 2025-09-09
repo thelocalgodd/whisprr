@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://whisprr-api.onrender.com"
+const API_BASE_URL = "https://whisprr-api.onrender.com/api"
 
 // API response types
 export interface ApiResponse<T = any> {

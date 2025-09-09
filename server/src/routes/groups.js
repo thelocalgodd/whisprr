@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -12,62 +12,30 @@ const {
   manageMember,
   getMyGroups,
   scheduleSession,
-  createGroupValidation
-} = require('../controllers/groupController');
-
-const { authenticate, authorize } = require('../middleware/auth');
-const { rateLimiters } = require('../middleware/security');
-
-router.post('/',
-  authenticate,
-  rateLimiters.general,
   createGroupValidation,
-  createGroup
-);
+} = require("../controllers/groupController");
 
-router.get('/',
-  rateLimiters.search,
-  getGroups
-);
+const { authenticate, authorize } = require("../middleware/auth");
+const { rateLimiters } = require("../middleware/security");
 
-router.get('/my-groups',
-  authenticate,
-  getMyGroups
-);
+router.post("/", createGroup);
 
-router.get('/:groupId',
-  authenticate,
-  getGroup
-);
+router.get("/", getGroups);
 
-router.post('/:groupId/join',
-  authenticate,
-  joinGroup
-);
+router.get("/my-groups", getMyGroups);
 
-router.post('/:groupId/leave',
-  authenticate,
-  leaveGroup
-);
+router.get("/:groupId", getGroup);
 
-router.put('/:groupId',
-  authenticate,
-  updateGroup
-);
+router.post("/:groupId/join", joinGroup);
 
-router.delete('/:groupId',
-  authenticate,
-  deleteGroup
-);
+router.post("/:groupId/leave", leaveGroup);
 
-router.post('/:groupId/members/:userId',
-  authenticate,
-  manageMember
-);
+router.put("/:groupId", updateGroup);
 
-router.post('/:groupId/schedule-session',
-  authenticate,
-  scheduleSession
-);
+router.delete("/:groupId", deleteGroup);
+
+router.post("/:groupId/members/:userId", manageMember);
+
+router.post("/:groupId/schedule-session", scheduleSession);
 
 module.exports = router;

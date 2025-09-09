@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -10,53 +10,26 @@ const {
   getBlockedUsers,
   panicButton,
   getCrisisResources,
-  reportValidation
-} = require('../controllers/moderationController');
-
-const { authenticate, authorize } = require('../middleware/auth');
-const { rateLimiters } = require('../middleware/security');
-
-router.post('/messages/:messageId',
-  authenticate,
-  authorize('counselor', 'admin'),
-  moderateMessage
-);
-
-router.get('/flagged',
-  authenticate,
-  authorize('counselor', 'admin'),
-  getFlaggedContent
-);
-
-router.post('/report',
-  authenticate,
-  rateLimiters.general,
   reportValidation,
-  reportContent
-);
+} = require("../controllers/moderationController");
 
-router.post('/block/:userId',
-  authenticate,
-  blockUser
-);
+const { authenticate, authorize } = require("../middleware/auth");
+const { rateLimiters } = require("../middleware/security");
 
-router.delete('/block/:userId',
-  authenticate,
-  unblockUser
-);
+router.post("/messages/:messageId", moderateMessage);
 
-router.get('/blocked',
-  authenticate,
-  getBlockedUsers
-);
+router.get("/flagged", getFlaggedContent);
 
-router.post('/panic',
-  authenticate,
-  panicButton
-);
+router.post("/report", reportContent);
 
-router.get('/crisis-resources',
-  getCrisisResources
-);
+router.post("/block/:userId", blockUser);
+
+router.delete("/block/:userId", unblockUser);
+
+router.get("/blocked", getBlockedUsers);
+
+router.post("/panic", panicButton);
+
+router.get("/crisis-resources", getCrisisResources);
 
 module.exports = router;

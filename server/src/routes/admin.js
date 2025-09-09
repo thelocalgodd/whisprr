@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -12,72 +12,30 @@ const {
   getSystemHealth,
   getCrisisAlerts,
   updateCrisisAlert,
-  banValidation
-} = require('../controllers/adminController');
-
-const { authenticate, authorize } = require('../middleware/auth');
-const { rateLimiters } = require('../middleware/security');
-
-router.get('/dashboard',
-  authenticate,
-  authorize('admin'),
-  getDashboardStats
-);
-
-router.get('/users',
-  authenticate,
-  authorize('admin'),
-  rateLimiters.admin,
-  getUsers
-);
-
-router.get('/users/:userId',
-  authenticate,
-  authorize('admin'),
-  getUserDetails
-);
-
-router.post('/users/:userId/ban',
-  authenticate,
-  authorize('admin'),
   banValidation,
-  banUser
-);
+} = require("../controllers/adminController");
 
-router.post('/users/:userId/unban',
-  authenticate,
-  authorize('admin'),
-  unbanUser
-);
+const { authenticate, authorize } = require("../middleware/auth");
+const { rateLimiters } = require("../middleware/security");
 
-router.get('/reports',
-  authenticate,
-  authorize('admin'),
-  getReports
-);
+router.get("/dashboard", getDashboardStats);
 
-router.post('/reports/:reportId/review',
-  authenticate,
-  authorize('admin'),
-  reviewReport
-);
+router.get("/users", getUsers);
 
-router.get('/system-health',
-  authenticate,
-  authorize('admin'),
-  getSystemHealth
-);
+router.get("/users/:userId", getUserDetails);
 
-router.get('/crisis-alerts',
-  authenticate,
-  authorize('admin'),
-  getCrisisAlerts
-);
+router.post("/users/:userId/ban", banUser);
 
-router.put('/crisis-alerts/:messageId',
-  authenticate,
-  authorize('admin'),
-  updateCrisisAlert
-);
+router.post("/users/:userId/unban", unbanUser);
+
+router.get("/reports", getReports);
+
+router.post("/reports/:reportId/review", reviewReport);
+
+router.get("/system-health", getSystemHealth);
+
+router.get("/crisis-alerts", getCrisisAlerts);
+
+router.put("/crisis-alerts/:messageId", updateCrisisAlert);
 
 module.exports = router;

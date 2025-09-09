@@ -1,6 +1,6 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
-const API_BASE_URL = "https://whisprr-api.onrender.com"
+const API_BASE_URL = "https://whisprr-api.onrender.com/api"
 
 // Create axios instance
 const api = axios.create({
