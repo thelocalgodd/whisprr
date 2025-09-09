@@ -1,5 +1,11 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { reportApi, contentFlagApi } from "@/lib/api";
 
 export default function MessageReportDetail({
   params,
@@ -7,42 +13,138 @@ export default function MessageReportDetail({
   params: { id: string };
 }) {
   const { id } = params;
+  const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [report, setReport] = useState<any>(null);
 
-  // Mock data - in real app, fetch based on ID
-  const report = {
-    id: id,
-    reporter: "AnonymousUser512",
-    target: "AnonymousUser339",
-    reason: "Harassment",
-    description:
-      "This user sent multiple threatening messages and continued after being asked to stop.",
-    createdAt: "2025-08-01 10:22",
-    status: "open",
-    reportedMessage: {
-      content:
-        "You are worthless and should just give up. Nobody cares about you.",
-      timestamp: "2025-08-01 09:45",
-      messageId: "msg_12345",
-    },
-    context: [
-      {
-        sender: "AnonymousUser339",
-        content: "Hey, can someone help me with anxiety management?",
-        timestamp: "2025-08-01 09:40",
-      },
-      {
-        sender: "AnonymousUser512",
-        content:
-          "You are worthless and should just give up. Nobody cares about you.",
-        timestamp: "2025-08-01 09:45",
-      },
-      {
-        sender: "AnonymousUser339",
-        content: "That's really hurtful, please stop.",
-        timestamp: "2025-08-01 09:46",
-      },
-    ],
+  useEffect(() => {
+    fetchReportDetails();
+  }, [id]);
+
+  const fetchReportDetails = async () => {
+    setLoading(true);
+    try {
+      const result = await reportApi.getReportById(id);
+      if (result.success) {
+        setReport(result.data);
+      } else {
+        // Fallback to mock data if API fails
+        setReport({
+          id: id,
+          reporter: "AnonymousUser512",
+          target: "AnonymousUser339",
+          reason: "Harassment",
+          description:
+            "This user sent multiple threatening messages and continued after being asked to stop.",
+          createdAt: "2025-08-01 10:22",
+          status: "open",
+          reportedMessage: {
+            content:
+              "You are worthless and should just give up. Nobody cares about you.",
+            timestamp: "2025-08-01 09:45",
+            messageId: "msg_12345",
+          },
+          context: [
+            {
+              sender: "AnonymousUser339",
+              content: "Hey, can someone help me with anxiety management?",
+              timestamp: "2025-08-01 09:40",
+            },
+            {
+              sender: "AnonymousUser512",
+              content:
+                "You are worthless and should just give up. Nobody cares about you.",
+              timestamp: "2025-08-01 09:45",
+            },
+            {
+              sender: "AnonymousUser339",
+              content: "That's really hurtful, please stop.",
+              timestamp: "2025-08-01 09:46",
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching report:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleAction = async (action: string) => {
+    setLoading(true);
+    try {
+      let result;
+      switch (action) {
+        case "resolve":
+          result = await reportApi.reviewReport(id, {
+            status: "resolved",
+            reviewNotes: "Report has been resolved",
+          });
+          break;
+        case "delete":
+          if (report?.reportedMessage?.messageId) {
+            result = await contentFlagApi.moderateMessage(
+              report.reportedMessage.messageId,
+              { action: "delete", reason: "Violation of community guidelines" }
+            );
+          }
+          break;
+        case "warn":
+          result = await contentFlagApi.moderateMessage(
+            report?.reportedMessage?.messageId || id,
+            { action: "warn", reason: "Inappropriate behavior" }
+          );
+          break;
+        case "suspend":
+          result = await contentFlagApi.moderateMessage(
+            report?.reportedMessage?.messageId || id,
+            { action: "suspend", reason: "Repeated violations" }
+          );
+          break;
+        case "dismiss":
+          result = await reportApi.reviewReport(id, {
+            status: "dismissed",
+            reviewNotes: "Report dismissed - no action required",
+          });
+          break;
+        default:
+          break;
+      }
+
+      if (result?.success) {
+        toast({
+          title: "Success",
+          description: `Action "${action}" completed successfully`,
+        });
+        router.push("/reports/messages");
+      } else {
+        toast({
+          title: "Error",
+          description: result?.error || `Failed to ${action} report`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error(`Error performing ${action}:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to ${action} report`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !report) {
+    return <div>Loading...</div>;
+  }
+
+  if (!report) {
+    return <div>Report not found</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -140,17 +242,43 @@ export default function MessageReportDetail({
               <CardTitle>Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full">Mark as Resolved</Button>
-              <Button variant="destructive" className="w-full">
+              <Button 
+                className="w-full" 
+                onClick={() => handleAction("resolve")}
+                disabled={loading}
+              >
+                Mark as Resolved
+              </Button>
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                onClick={() => handleAction("delete")}
+                disabled={loading}
+              >
                 Remove Message
               </Button>
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => handleAction("warn")}
+                disabled={loading}
+              >
                 Warn User
               </Button>
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => handleAction("suspend")}
+                disabled={loading}
+              >
                 Suspend User
               </Button>
-              <Button variant="ghost" className="w-full">
+              <Button 
+                variant="ghost" 
+                className="w-full"
+                onClick={() => handleAction("dismiss")}
+                disabled={loading}
+              >
                 Dismiss Report
               </Button>
             </CardContent>

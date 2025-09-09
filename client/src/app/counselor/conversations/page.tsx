@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BadgeCheck, Search, Send } from "lucide-react";
+import { BadgeCheck, Search, Send, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { conversationApi } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface User {
   _id: string;
@@ -33,13 +35,57 @@ interface Conversation {
 }
 
 export default function ConversationsPage() {
-  const [conversations] = useState<Conversation[]>([]);
+  const { user: authUser } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [error] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const result = await conversationApi.getConversations();
+        
+        if (result.success && result.data) {
+          // Transform API data to match our interface
+          const transformedConversations = result.data.map((conv: any) => ({
+            _id: conv._id || conv.id,
+            name: conv.participant?.username || conv.name || "Anonymous User",
+            role: conv.participant?.role || "user",
+            isVerified: conv.participant?.isVerified || false,
+            lastMessage: conv.lastMessage?.content || "No messages yet",
+            time: conv.lastMessage?.createdAt || conv.createdAt || new Date().toISOString(),
+            avatar: conv.participant?.profile?.avatar || "",
+            messages: conv.messages?.map((msg: any) => ({
+              _id: msg._id || msg.id,
+              sender: {
+                _id: msg.sender?._id || msg.sender?.id || "unknown",
+                username: msg.sender?.username || "Anonymous"
+              },
+              text: msg.content || msg.text || "",
+              time: msg.createdAt || msg.timestamp || new Date().toISOString()
+            })) || []
+          }));
+          setConversations(transformedConversations);
+        } else {
+          setError(result.error || "Failed to load conversations");
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch conversations:", error);
+        setError("Failed to load conversations. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, []);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -64,7 +110,41 @@ export default function ConversationsPage() {
     convo.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (error) return <div>{error}</div>;
+  if (loading) {
+    return (
+      <Card className="w-full shadow-none h-[calc(100vh-4rem)]">
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center space-y-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Loading conversations...</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full shadow-none h-[calc(100vh-4rem)]">
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+            <div>
+              <h3 className="text-lg font-semibold text-red-600">Error Loading Conversations</h3>
+              <p className="text-muted-foreground mt-2">{error}</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => window.location.reload()}
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full shadow-none h-[calc(100vh-4rem)]">
@@ -173,7 +253,7 @@ export default function ConversationsPage() {
                     className="pr-12"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                   />
                   <Button
                     size="icon"

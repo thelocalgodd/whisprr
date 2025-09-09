@@ -212,7 +212,7 @@ const getResources = async (req, res) => {
       sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
     }
 
-    const resources = await Resource.find(filter)
+    const resources = await Resource.find({})
       .populate("uploadedBy", "username profile role counselorInfo.isVerified")
       .populate("approvedBy", "username profile")
       .sort(sortOptions)

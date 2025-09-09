@@ -39,8 +39,6 @@ const ResourceIcon = ({ type }: { type: Resource["type"] }) => {
   }
 };
 
-
-
 const ResourcesPage = () => {
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +48,7 @@ const ResourcesPage = () => {
       try {
         setLoading(true);
         const response = await resourceApi.getResources();
+        console.log("Fetched resources:", response);
         if (response.success && response.data) {
           setResources(response.data.resources);
         }
@@ -70,7 +69,6 @@ const ResourcesPage = () => {
   const handleLike = (resourceId: string) => {
     console.log("Like resource:", resourceId);
   };
-
 
   return (
     <div className="p-6">
