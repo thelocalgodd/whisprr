@@ -41,9 +41,10 @@ export default function GroupsPage() {
         console.log("Fetched groups:", result);
         setGroups(result.groups);
         setPagination(result.pagination);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to fetch groups:", error);
-        setError(error?.message || "Failed to load groups");
+        const errorMessage = error instanceof Error ? error.message : "Failed to load groups";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -62,7 +63,8 @@ export default function GroupsPage() {
           setMessages(result.messages);
         } catch (error) {
           console.error("Failed to fetch messages:", error);
-          setError("Failed to load messages. Please try again.");
+          const errorMessage = error instanceof Error ? error.message : "Failed to load messages. Please try again.";
+        setError(errorMessage);
         } finally {
           setIsLoadingMessages(false);
         }
@@ -112,9 +114,10 @@ export default function GroupsPage() {
           } else {
             setError("Failed to send message");
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Failed to send message:", error);
-          setError(error?.message || "Failed to send message");
+          const errorMessage = error instanceof Error ? error.message : "Failed to send message";
+          setError(errorMessage);
         } finally {
           setIsSendingMessage(false);
         }
@@ -134,9 +137,10 @@ export default function GroupsPage() {
         setError(null);
         const result = await getGroupMessages(selectedGroup._id);
         setMessages(result.messages);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to fetch messages:", error);
-        setError("Failed to load messages. Please try again.");
+        const errorMessage = error instanceof Error ? error.message : "Failed to load messages. Please try again.";
+        setError(errorMessage);
       }
     }
   }, [selectedGroup]);

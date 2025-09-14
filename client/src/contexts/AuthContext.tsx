@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (
     username: string,
+    email: string,
     password: string,
     fullName: string,
     role: string = "user"
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await RegisterService(
         username,
+        email,
         password,
         fullName,
         role

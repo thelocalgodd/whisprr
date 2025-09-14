@@ -136,7 +136,7 @@ export default function ConversationsPage() {
                   <div className="flex items-center w-full">
                     <p className="font-semibold w-full">
                       {convo.participants
-                        .filter((p) => p._id !== "currentUserId") // Replace with actual current user ID
+                        .filter((p) => p._id !== authUser?._id)
                         .map((p) => p.username)
                         .join(", ") || "Conversation"}
                     </p>
@@ -167,7 +167,7 @@ export default function ConversationsPage() {
                 <div className="flex-1 flex items-center">
                   <p className="font-semibold">
                     {selectedConversation.participants
-                      .filter((p) => p._id !== "currentUserId") // Replace with actual current user ID
+                      .filter((p) => p._id !== authUser?._id)
                       .map((p) => p.username)
                       .join(", ") || "Conversation"}
                   </p>
@@ -192,14 +192,14 @@ export default function ConversationsPage() {
                     <div
                       key={msg._id}
                       className={`flex mb-4 ${
-                        msg.sender._id === "currentUserId" // Replace with actual current user ID
+                        msg.sender._id === authUser?._id
                           ? "justify-end"
                           : "justify-start"
                       }`}
                     >
                       <div
                         className={`p-3 rounded-lg max-w-xs ${
-                          msg.sender._id === "currentUserId" // Replace with actual current user ID
+                          msg.sender._id === authUser?._id
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted"
                         }`}
@@ -207,7 +207,7 @@ export default function ConversationsPage() {
                         <p className="text-sm">{msg.content.text}</p>
                         <p
                           className={`text-xs mt-1 ${
-                            msg.sender._id === "currentUserId" // Replace with actual current user ID
+                            msg.sender._id === authUser?._id
                               ? "text-primary-foreground/70"
                               : "text-muted-foreground"
                           }`}

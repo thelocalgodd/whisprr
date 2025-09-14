@@ -49,6 +49,7 @@ export default function GroupChatPage() {
         const response = await groupApi.getGroup(groupId);
         if (response.success && response.data) {
           const group = response.data;
+          console.log("group: ", group);
           setGroupInfo(group);
 
           // Determine posting permissions
@@ -57,15 +58,15 @@ export default function GroupChatPage() {
             (mod) => mod._id === user?._id
           );
 
-          // Check if user can post (simplified logic)
           setCanPost(true); // For now, allow all users to post
 
           // Set member count from statistics
           setMemberCount(group.statistics?.totalMembers || 0);
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error("Failed to fetch group info:", error);
-        setLoadingError(error?.message || "Failed to load group information");
+        const errorMessage = error instanceof Error ? error.message : "Failed to load group information";
+        setLoadingError(errorMessage);
         toast.error("Failed to load group information");
       } finally {
         setIsLoading(false);
@@ -98,21 +99,29 @@ export default function GroupChatPage() {
 
     try {
       const response = await groupApi.getGroupMessages(groupId);
-      
+
       if (response.success && response.data) {
-        const formattedMessages: GroupMessage[] = response.data.messages.map((msg: Message) => ({
-          id: msg._id,
-          text: msg.content.text,
-          senderId: msg.sender._id,
-          senderName: msg.sender.username || msg.sender.fullName || "User",
-          timestamp: new Date(msg.createdAt),
-          isCurrentUser: msg.sender._id === user._id
-        }));
-        
+        const formattedMessages: GroupMessage[] = response.data.messages.map(
+          (msg: Message) => ({
+            id: msg._id,
+            text: msg.content.text,
+            senderId: msg.sender._id,
+            senderName: msg.sender.username || msg.sender.fullName || "User",
+            timestamp: new Date(msg.createdAt),
+            isCurrentUser: msg.sender._id === user._id,
+          })
+        );
+
         setMessages(formattedMessages);
+      } else {
+        console.error("Failed to load messages:", response.message || response.error);
       }
     } catch (error) {
       console.error("Error loading messages:", error);
+      // Don't show toast for polling errors to avoid spam
+      if (!pollingIntervalRef.current) {
+        toast.error("Failed to load messages");
+      }
     }
   };
 
@@ -132,18 +141,24 @@ export default function GroupChatPage() {
       const response = await groupApi.sendGroupMessage(groupId, {
         content: {
           text: messageText,
-          type: 'text'
+          type: "text",
         },
-        messageType: 'text'
+        messageType: "text",
       });
 
       if (response.success) {
         // Reload messages to get the new message
         await loadMessages();
+        toast.success("Message sent!");
+      } else {
+        console.error("Failed to send message:", response.message || response.error);
+        toast.error(response.message || "Failed to send message");
+        setInput(messageText); // Restore input on error
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      toast.error("Failed to send message");
+      const errorMessage = error instanceof Error ? error.message : "Failed to send message";
+      toast.error(errorMessage);
       setInput(messageText); // Restore input on error
     } finally {
       setIsSending(false);
@@ -152,6 +167,7 @@ export default function GroupChatPage() {
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !isSending) {
+      e.preventDefault();
       handleSend();
     }
   };
@@ -160,7 +176,9 @@ export default function GroupChatPage() {
     return (
       <Card className="w-full h-[calc(100vh-3rem)] flex flex-col shadow-none border-none">
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">Please sign in to use the chat</p>
+          <p className="text-muted-foreground">
+            Please sign in to use the chat
+          </p>
         </div>
       </Card>
     );
@@ -246,9 +264,7 @@ export default function GroupChatPage() {
                 }`}
               >
                 {!msg.isCurrentUser && (
-                  <p className="text-xs font-semibold mb-1">
-                    {msg.senderName}
-                  </p>
+                  <p className="text-xs font-semibold mb-1">{msg.senderName}</p>
                 )}
                 <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                 <p
@@ -279,7 +295,7 @@ export default function GroupChatPage() {
               className="pr-12"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleInputKeyDown}
+              onKeyDown={handleInputKeyDown}
               disabled={isSending}
             />
             <Button

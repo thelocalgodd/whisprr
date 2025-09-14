@@ -606,6 +606,146 @@ const createGroupValidation = [
     .withMessage("Invalid group type"),
 ];
 
+const getGroupMessages = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { page = 1, limit = 50 } = req.query;
+
+    // Check if group exists and user has access
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    // Check if user is a member of the group or has access
+    const isMember = group.members.some(
+      (member) => member.user.toString() === req.user?._id.toString()
+    );
+
+    const isModerator = group.moderators.some(
+      (moderator) => moderator.toString() === req.user?._id.toString()
+    );
+
+    // if (!isMember && !isModerator && req.user?.role !== "admin") {
+    //   return res
+    //     .status(403)
+    //     .json({ error: "You don't have access to this group's messages" });
+    // }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const messages = await Message.find({ group: groupId })
+      .populate("sender", "username fullName profile role")
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(skip);
+
+    const totalMessages = await Message.countDocuments({ group: groupId });
+    const totalPages = Math.ceil(totalMessages / parseInt(limit));
+
+    res.json({
+      success: true,
+      data: {
+        messages: messages.reverse(), // Reverse to show oldest first
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalMessages,
+          pages: totalPages,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get group messages error:", error);
+    res.status(500).json({ error: "Failed to retrieve group messages" });
+  }
+};
+
+const sendGroupMessage = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { content, messageType = "text" } = req.body;
+
+    // Validate input
+    if (!content || !content.text?.trim()) {
+      return res.status(400).json({ error: "Message content is required" });
+    }
+
+    // Check if group exists
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    // Check if user is a member of the group
+    const isMember = group.members.some(
+      (member) => member.user.toString() === req.user._id.toString()
+    );
+
+    const isModerator = group.moderators.some(
+      (moderator) => moderator.toString() === req.user._id.toString()
+    );
+
+    if (!isMember && !isModerator && req.user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ error: "You must be a member of this group to send messages" });
+    }
+
+    // Check posting permissions
+    const { postingPermissions } = group.settings;
+    let canPost = false;
+
+    if (postingPermissions === "all") {
+      canPost = true;
+    } else if (
+      postingPermissions === "counselors-only" &&
+      req.user.role === "counselor"
+    ) {
+      canPost = true;
+    } else if (postingPermissions === "moderators-only" && isModerator) {
+      canPost = true;
+    } else if (req.user.role === "admin") {
+      canPost = true; // Admins can always post
+    }
+
+    if (!canPost) {
+      return res
+        .status(403)
+        .json({ error: "You don't have permission to post in this group" });
+    }
+
+    // Create the message
+    const message = new Message({
+      sender: req.user._id,
+      group: groupId,
+      conversationId: `group_${groupId}`,
+      messageType,
+      content: {
+        text: content.text,
+      },
+    });
+
+    await message.save();
+    await message.populate("sender", "username fullName profile role");
+
+    // Update group's last activity
+    await Group.findByIdAndUpdate(groupId, {
+      $set: { "statistics.lastActivity": new Date() },
+      $inc: { "statistics.totalMessages": 1 },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: message,
+      message: "Message sent successfully",
+    });
+  } catch (error) {
+    console.error("Send group message error:", error);
+    res.status(500).json({ error: "Failed to send message" });
+  }
+};
+
 module.exports = {
   createGroup,
   getGroups,
@@ -617,5 +757,7 @@ module.exports = {
   manageMember,
   getMyGroups,
   scheduleSession,
+  getGroupMessages,
+  sendGroupMessage,
   createGroupValidation,
 };

@@ -12,11 +12,10 @@ const {
   manageMember,
   getMyGroups,
   scheduleSession,
+  getGroupMessages,
+  sendGroupMessage,
   createGroupValidation,
 } = require("../controllers/groupController");
-
-const { authenticate, authorize } = require("../middleware/auth");
-const { rateLimiters } = require("../middleware/security");
 
 router.post("/", createGroup);
 
@@ -37,5 +36,9 @@ router.delete("/:groupId", deleteGroup);
 router.post("/:groupId/members/:userId", manageMember);
 
 router.post("/:groupId/schedule-session", scheduleSession);
+
+router.get("/:groupId/messages", getGroupMessages);
+
+router.post("/:groupId/messages", sendGroupMessage);
 
 module.exports = router;

@@ -495,6 +495,32 @@ export const groupApi = {
     const response = await api.delete(`/groups/${groupId}/members/${userId}`);
     return handleResponse(response);
   },
+
+  getGroupMessages: async (
+    groupId: string,
+    params?: { page?: number; limit?: number }
+  ): Promise<ApiResponse<{ messages: Message[]; pagination: any }>> => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+
+    const response = await api.get(
+      `/groups/${groupId}/messages?${searchParams.toString()}`
+    );
+    return handleResponse(response);
+  },
+
+  sendGroupMessage: async (groupId: string, data: { 
+    content: {
+      text: string;
+      type: string;
+    };
+    messageType: 'text' | 'image' | 'file' | 'voice';
+    replyTo?: string;
+  }): Promise<ApiResponse<Message>> => {
+    const response = await api.post(`/groups/${groupId}/messages`, data);
+    return handleResponse(response);
+  },
 };
 
 // Notifications API

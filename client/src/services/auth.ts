@@ -48,11 +48,12 @@ export const Login = async (
         token: '',
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Login error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during login.';
     return {
       success: false,
-      message: error.message || 'An unexpected error occurred during login.',
+      message: errorMessage,
       user: {} as User,
       token: '',
     };
@@ -91,9 +92,10 @@ export const Register = async (
     } else {
       throw new Error(response.error || 'Registration failed');
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Registration error:', error);
-    throw new Error(error.message || 'An unexpected error occurred during registration.');
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during registration.';
+    throw new Error(errorMessage);
   }
 };
 
@@ -109,7 +111,7 @@ export const Logout = async (): Promise<{ success: boolean; message: string }> =
       success: true,
       message: response.message || 'Logout successful',
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Logout error:', error);
     
     // Still clear local storage even if API call fails
@@ -134,7 +136,7 @@ export const GetProfile = async (): Promise<User | null> => {
     }
     
     return null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get profile error:', error);
     return null;
   }
@@ -151,7 +153,7 @@ export const UpdateProfile = async (profileData: Partial<User>): Promise<User | 
     }
     
     return null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update profile error:', error);
     throw new Error(error.message || 'Failed to update profile');
   }
@@ -171,7 +173,7 @@ export const ChangePassword = async (
       success: response.success,
       message: response.message || 'Password changed successfully',
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Change password error:', error);
     throw new Error(error.message || 'Failed to change password');
   }
@@ -185,7 +187,7 @@ export const VerifyEmail = async (token: string): Promise<{ success: boolean; me
       success: response.success,
       message: response.message || 'Email verified successfully',
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Email verification error:', error);
     throw new Error(error.message || 'Failed to verify email');
   }
@@ -199,7 +201,7 @@ export const RequestPasswordReset = async (email: string): Promise<{ success: bo
       success: response.success,
       message: response.message || 'Password reset email sent',
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Password reset request error:', error);
     throw new Error(error.message || 'Failed to request password reset');
   }
@@ -216,7 +218,7 @@ export const ResetPassword = async (
       success: response.success,
       message: response.message || 'Password reset successfully',
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Password reset error:', error);
     throw new Error(error.message || 'Failed to reset password');
   }

@@ -144,21 +144,22 @@ export const removeFromGroup = async (groupId: string, userId: string): Promise<
   }
 };
 
-// Group messaging functions (assuming groups use conversations)
+// Group messaging functions
 export const getGroupMessages = async (
   groupId: string,
   params?: { page?: number; limit?: number }
 ): Promise<{ messages: Message[]; pagination?: any }> => {
   try {
-    const response = await messageApi.getMessages(groupId, params);
-    
+    const response = await groupApi.getGroupMessages(groupId, params);
+
     if (response.success && response.data) {
       return response.data;
     }
-    
+
     return { messages: [] };
-  } catch (error) {
-    console.error(`Failed to fetch messages for group ${groupId}:`, error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : `Failed to fetch messages for group ${groupId}`;
+    console.error(errorMessage, error);
     throw error;
   }
 };
@@ -172,20 +173,23 @@ export const sendGroupMessage = async (
   }
 ): Promise<Message | null> => {
   try {
-    const response = await messageApi.sendMessage({
-      conversationId: groupId, // Groups use conversation ID structure
-      content,
+    const response = await groupApi.sendGroupMessage(groupId, {
+      content: {
+        text: content,
+        type: options?.messageType || 'text',
+      },
       messageType: options?.messageType || 'text',
       replyTo: options?.replyTo,
     });
-    
+
     if (response.success && response.data) {
       return response.data;
     }
-    
+
     return null;
-  } catch (error) {
-    console.error(`Failed to send message to group ${groupId}:`, error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : `Failed to send message to group ${groupId}`;
+    console.error(errorMessage, error);
     throw error;
   }
 };

@@ -64,7 +64,7 @@ const ResourcesPage = () => {
   }, []);
 
   const handleView = (resource: Resource) => {
-    window.open(resource.url, "_blank");
+    window.open(resource.contentUrl, "_blank");
   };
 
   const handleLike = (resourceId: string) => {
