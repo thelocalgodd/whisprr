@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Users, Shield, Clock } from "lucide-react";
+import { Search, Users, Shield } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Group } from "@/lib/api";
@@ -127,7 +126,7 @@ export function GroupList({
                 }`}
                 onClick={() => onGroupSelect(group)}
               >
-                <div className="p-4 space-y-3">
+                <div className="px-4 space-y-3">
                   {/* Group Header */}
                   <div className="flex items-start gap-3">
                     <Avatar className="h-10 w-10 flex-shrink-0">
@@ -161,10 +160,7 @@ export function GroupList({
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1 text-slate-500">
                       <Users className="w-3 h-3" />
-                      <span>{group.statistics.totalMembers}</span>
-                      <span className="text-green-600">
-                        ({group.statistics.activeMembers} active)
-                      </span>
+                      <span>{group.statistics.totalMembers} Members</span>
                     </div>
                     <div className="flex items-center gap-1">
                       {getPostingPermissionIcon(
@@ -179,50 +175,6 @@ export function GroupList({
                             : "Moderated"}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Group Tags */}
-                  <div className="flex flex-wrap gap-1">
-                    <Badge
-                      variant="outline"
-                      className={`text-xs px-2 py-1 ${getGroupTypeColor(group.type)}`}
-                    >
-                      {getGroupTypeLabel(group.type)}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs px-2 py-1 ${getCategoryColor(group.category)}`}
-                    >
-                      {group.category}
-                    </Badge>
-                    {group.tags.slice(0, 2).map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant="outline"
-                        className="text-xs px-2 py-1 bg-slate-100 text-slate-700"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                    {group.tags.length > 2 && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs px-2 py-1 bg-slate-100 text-slate-500"
-                      >
-                        +{group.tags.length - 2}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Last Activity */}
-                  <div className="flex items-center gap-1 text-xs text-slate-400">
-                    <Clock className="w-3 h-3" />
-                    <span>
-                      Last activity:{" "}
-                      {new Date(
-                        group.statistics.lastActivity
-                      ).toLocaleDateString()}
-                    </span>
                   </div>
                 </div>
               </Card>

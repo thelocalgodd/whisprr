@@ -31,7 +31,7 @@ export default function ConversationsPage() {
       try {
         setLoading(true);
         const response = await conversationApi.getConversations();
-        if (response.success && response.data) {
+        if (response) {
           setConversations(response.data);
         }
       } catch (error) {

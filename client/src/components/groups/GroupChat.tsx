@@ -59,33 +59,8 @@ export function GroupChat({
     }
   };
 
-  const canUserPost = (group: Group, user: User | null): boolean => {
-    if (!user || !group) return false;
-
-    const { postingPermissions } = group.settings;
-
-    switch (postingPermissions) {
-      case "all":
-        return true;
-      case "counselors-only":
-        return user.role === "counselor";
-      case "moderators-only":
-        return group.moderators.some((mod) => mod._id === user._id);
-      default:
-        return false;
-    }
-  };
-
-  const getPostingPermissionMessage = (postingPermissions: string): string => {
-    switch (postingPermissions) {
-      case "counselors-only":
-        return "Only verified counselors can post in this group";
-      case "moderators-only":
-        return "Only group moderators can post messages";
-      default:
-        return "You don't have permission to post in this group";
-    }
-  };
+  // Any user can post
+  const canUserPost = () => true;
 
   const formatMessageTime = (timestamp: string): string => {
     const date = new Date(timestamp);
@@ -113,7 +88,7 @@ export function GroupChat({
     );
   }
 
-  const canPost = canUserPost(group, authUser);
+  // const canPost = canUserPost(group, authUser);
 
   return (
     <div className="flex-1 flex flex-col bg-white">
@@ -297,38 +272,38 @@ export function GroupChat({
 
       {/* Message Input */}
       <div className="p-4 border-t bg-white">
-        {!canPost ? (
+        {/* {!canPost ? (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
             <Shield className="w-5 h-5 text-amber-600 mx-auto mb-1" />
             <p className="text-sm text-amber-800">
               {getPostingPermissionMessage(group.settings.postingPermissions)}
             </p>
           </div>
-        ) : (
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <Input
-              ref={inputRef}
-              placeholder="Type your message..."
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={isSending}
-              className="flex-1"
-            />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!messageInput.trim() || isSending}
-              className="px-4"
-            >
-              {isSending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </form>
-        )}
+        ) : ( */}
+        <form onSubmit={handleSendMessage} className="flex gap-2">
+          <Input
+            ref={inputRef}
+            placeholder="Type your message..."
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            disabled={isSending}
+            className="flex-1"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!messageInput.trim() || isSending}
+            className="px-4"
+          >
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </form>
+        {/* )} */}
 
         {group.settings.requiresApproval && (
           <p className="text-xs text-slate-500 mt-2 text-center">

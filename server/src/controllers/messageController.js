@@ -338,11 +338,9 @@ const deleteMessage = async (req, res) => {
 
     if (deleteForEveryone) {
       if (message.createdAt < new Date(Date.now() - 60 * 60 * 1000)) {
-        return res
-          .status(403)
-          .json({
-            error: "Messages can only be deleted for everyone within 1 hour",
-          });
+        return res.status(403).json({
+          error: "Messages can only be deleted for everyone within 1 hour",
+        });
       }
 
       message.isDeleted = true;
@@ -538,82 +536,36 @@ const getConversations = async (req, res) => {
     const userId = req.user?._id;
     const { page = 1, limit = 20, type } = req.query;
     const skip = (page - 1) * limit;
-
     let conversations = [];
 
+    // Private conversations
     if (!type || type === "private") {
-      const privateMessages = await Message.aggregate([
-        {
-          $match: {
-            $or: [{ sender: userId }, { recipient: userId }],
-            group: { $exists: false },
-            isDeleted: false,
-          },
-        },
-        {
-          $sort: { createdAt: -1 },
-        },
-        {
-          $group: {
-            _id: "$conversationId",
-            lastMessage: { $first: "$$ROOT" },
-            unreadCount: {
-              $sum: {
-                $cond: [
-                  {
-                    $and: [
-                      { $eq: ["$recipient", userId] },
-                      { $eq: ["$status.read", false] },
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-          },
-        },
-        {
-          $lookup: {
-            from: "users",
-            localField: "lastMessage.sender",
-            foreignField: "_id",
-            as: "sender",
-          },
-        },
-        {
-          $lookup: {
-            from: "users",
-            localField: "lastMessage.recipient",
-            foreignField: "_id",
-            as: "recipient",
-          },
-        },
-        {
-          $sort: { "lastMessage.createdAt": -1 },
-        },
-        {
-          $skip: skip,
-        },
-        {
-          $limit: parseInt(limit),
-        },
-      ]);
+      const privateMessages = await Message.find({})
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
 
-      conversations.push(
-        ...privateMessages.map((conv) => ({
-          ...conv,
-          type: "private",
-        }))
-      );
+      // Group by conversationId and get last message per conversation
+      const convMap = new Map();
+      privateMessages.forEach((msg) => {
+        if (!convMap.has(msg.conversationId)) {
+          convMap.set(msg.conversationId, msg);
+        }
+      });
+      const privateConvs = Array.from(convMap.values()).map((msg) => ({
+        _id: msg.conversationId,
+        lastMessage: msg,
+        type: "private",
+      }));
+      conversations.push(...privateConvs);
     }
 
+    // Group conversations
     if (!type || type === "group") {
       const userGroups = await Group.find({
         "members.user": userId,
         isActive: true,
       })
-        .populate("members.user", "username profile")
         .sort({ "statistics.lastActivity": -1 })
         .skip(skip)
         .limit(parseInt(limit));
@@ -623,27 +575,15 @@ const getConversations = async (req, res) => {
           const lastMessage = await Message.findOne({
             group: group._id,
             isDeleted: false,
-          })
-            .populate("sender", "username profile role")
-            .sort({ createdAt: -1 });
-
-          const unreadCount = await Message.countDocuments({
-            group: group._id,
-            recipient: userId,
-            "status.read": false,
-            isDeleted: false,
-          });
-
+          }).sort({ createdAt: -1 });
           return {
             _id: group._id.toString(),
             type: "group",
             group,
             lastMessage,
-            unreadCount,
           };
         })
       );
-
       conversations.push(...groupConversations);
     }
 
@@ -668,7 +608,6 @@ const getConversations = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get conversations error:", error);
     res.status(500).json({ error: "Failed to get conversations" });
   }
 };

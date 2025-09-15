@@ -43,7 +43,8 @@ export default function GroupsPage() {
         setPagination(result.pagination);
       } catch (error: unknown) {
         console.error("Failed to fetch groups:", error);
-        const errorMessage = error instanceof Error ? error.message : "Failed to load groups";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to load groups";
         setError(errorMessage);
       } finally {
         setLoading(false);
@@ -63,8 +64,11 @@ export default function GroupsPage() {
           setMessages(result.messages);
         } catch (error) {
           console.error("Failed to fetch messages:", error);
-          const errorMessage = error instanceof Error ? error.message : "Failed to load messages. Please try again.";
-        setError(errorMessage);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Failed to load messages. Please try again.";
+          setError(errorMessage);
         } finally {
           setIsLoadingMessages(false);
         }
@@ -82,7 +86,7 @@ export default function GroupsPage() {
 
           // Check posting permissions based on postingPermissions
           const { postingPermissions } = selectedGroup.settings;
-          let canPost = false;
+          let canPost = true;
           if (postingPermissions === "all") {
             canPost = true;
           } else if (
@@ -116,7 +120,8 @@ export default function GroupsPage() {
           }
         } catch (error: unknown) {
           console.error("Failed to send message:", error);
-          const errorMessage = error instanceof Error ? error.message : "Failed to send message";
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to send message";
           setError(errorMessage);
         } finally {
           setIsSendingMessage(false);
@@ -139,7 +144,10 @@ export default function GroupsPage() {
         setMessages(result.messages);
       } catch (error: unknown) {
         console.error("Failed to fetch messages:", error);
-        const errorMessage = error instanceof Error ? error.message : "Failed to load messages. Please try again.";
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to load messages. Please try again.";
         setError(errorMessage);
       }
     }

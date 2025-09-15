@@ -65,7 +65,10 @@ export default function GroupChatPage() {
         }
       } catch (error) {
         console.error("Failed to fetch group info:", error);
-        const errorMessage = error instanceof Error ? error.message : "Failed to load group information";
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to load group information";
         setLoadingError(errorMessage);
         toast.error("Failed to load group information");
       } finally {
@@ -114,7 +117,10 @@ export default function GroupChatPage() {
 
         setMessages(formattedMessages);
       } else {
-        console.error("Failed to load messages:", response.message || response.error);
+        console.error(
+          "Failed to load messages:",
+          response.message || response.error
+        );
       }
     } catch (error) {
       console.error("Error loading messages:", error);
@@ -151,13 +157,17 @@ export default function GroupChatPage() {
         await loadMessages();
         toast.success("Message sent!");
       } else {
-        console.error("Failed to send message:", response.message || response.error);
+        console.error(
+          "Failed to send message:",
+          response.message || response.error
+        );
         toast.error(response.message || "Failed to send message");
         setInput(messageText); // Restore input on error
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to send message";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to send message";
       toast.error(errorMessage);
       setInput(messageText); // Restore input on error
     } finally {
@@ -288,31 +298,31 @@ export default function GroupChatPage() {
       </div>
 
       <div className="p-4 border-t">
-        {canPost ? (
-          <div className="relative">
-            <Input
-              placeholder="Type a message..."
-              className="pr-12"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleInputKeyDown}
-              disabled={isSending}
-            />
-            <Button
-              size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-16 bg-primary text-primary-foreground"
-              onClick={handleSend}
-              disabled={isSending || !input.trim()}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
+        {/* {canPost ? (  */}
+        <div className="relative">
+          <Input
+            placeholder="type a message..."
+            className="pr-12"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleInputKeyDown}
+            disabled={isSending}
+          />
+          <Button
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-16 bg-primary text-primary-foreground"
+            onClick={handleSend}
+            disabled={isSending || !input.trim()}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        {/* ) : (
           <div className="text-center text-sm text-muted-foreground">
             <Shield className="h-4 w-4 inline mr-1" />
             You don&apos;t have permission to post in this group
           </div>
-        )}
+        )} */}
       </div>
     </Card>
   );
